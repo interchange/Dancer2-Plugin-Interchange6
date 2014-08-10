@@ -1,20 +1,20 @@
-package Dancer::Plugin::Interchange6::Routes::Account;
+package Dancer2::Plugin::Interchange6::Routes::Account;
 
 use strict;
 use warnings;
 
-use Dancer ':syntax';
-use Dancer::Plugin;
-use Dancer::Plugin::Interchange6;
-use Dancer::Plugin::Auth::Extensible;
+use Dancer2 ':syntax';
+use Dancer2::Plugin;
+use Dancer2::Plugin::Interchange6;
+use Dancer2::Plugin::Auth::Extensible;
 
 =head1 NAME
 
-Dancer::Plugin::Interchange6::Routes::Account - Account routes for Interchange6 Shop Machine
+Dancer2::Plugin::Interchange6::Routes::Account - Account routes for Interchange6 Shop Machine
 
 =head1 DESCRIPTION
 
-The Interchange6 account routes module installs Dancer routes for
+The Interchange6 account routes module installs Dancer2 routes for
 login and logout
 
 =cut

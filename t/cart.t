@@ -6,10 +6,10 @@ use warnings;
 use Test::Most 'die', tests => 83;
 
 use Interchange6::Schema;
-use Dancer qw(:tests);
-use Dancer::Plugin::Interchange6;
+use Dancer2 qw(:tests);
+use Dancer2::Plugin::Interchange6;
 use DBICx::TestDatabase;
-use Dancer::Test;
+use Dancer2::Test;
 
 use Data::Dumper;
 use DateTime;

@@ -1,19 +1,19 @@
-package Dancer::Plugin::Interchange6;
+package Dancer2::Plugin::Interchange6;
 
 use strict;
 use warnings;
 
-use Dancer qw(:syntax !before !after);
-use Dancer::Plugin;
-use Dancer::Plugin::DBIC;
-use Dancer::Plugin::Auth::Extensible;
+use Dancer2 qw(:syntax !before !after);
+use Dancer2::Plugin;
+use Dancer2::Plugin::DBIC;
+use Dancer2::Plugin::Auth::Extensible;
 
-use Dancer::Plugin::Interchange6::Cart;
-use Dancer::Plugin::Interchange6::Business::OnlinePayment;
+use Dancer2::Plugin::Interchange6::Cart;
+use Dancer2::Plugin::Interchange6::Business::OnlinePayment;
 
 =head1 NAME
 
-Dancer::Plugin::Interchange6 - Interchange6 Shop Plugin for Dancer
+Dancer2::Plugin::Interchange6 - Interchange6 Shop Plugin for Dancer2
 
 =head1 VERSION
 
@@ -25,7 +25,7 @@ our $VERSION = '0.040';
 
 =head1 REQUIREMENTS
 
-All Interchange6 Dancer applications need to use the L<Dancer::Session::DBIC>
+All Interchange6 Dancer2 applications need to use the L<Dancer2::Session::DBIC>
 engine.
 
 The easiest way to configure this is in your main module, just after all
@@ -36,7 +36,7 @@ the C<use> statements:
 
 =head1 ROUTES
 
-You can use the L<Dancer::Plugin::Interchange6::Routes> plugin bundled with this
+You can use the L<Dancer2::Plugin::Interchange6::Routes> plugin bundled with this
 plugin to setup standard routes for:
 
 =over 4
@@ -56,9 +56,9 @@ of your main module:
 
     package MyShop;
 
-    use Dancer ':syntax';
-    use Dancer::Plugin::Interchange6;
-    use Dancer::Plugin::Interchange6::Routes;
+    use Dancer2 ':syntax';
+    use Dancer2::Plugin::Interchange6;
+    use Dancer2::Plugin::Interchange6::Routes;
 
     get '/shop' => sub {
         ...
@@ -70,7 +70,7 @@ of your main module:
 
     true;
 
-Please refer to L<Dancer::Plugin::Interchange6::Routes> for configuration options
+Please refer to L<Dancer2::Plugin::Interchange6::Routes> for configuration options
 and further information.
 
 =head1 HOOKS
@@ -192,7 +192,7 @@ Triggered after sessions_id is set for the cart.
 =head1 EXPIRE DBIC SESSIONS
 
 This command expires/manages DBIC sessions and carts.  NOTE: For proper
-functionality please copy/link to Dancer App/bin directory.
+functionality please copy/link to Dancer2 App/bin directory.
 
     interchange6-expire-sessions
 
@@ -280,7 +280,7 @@ register shop_charge => sub {
     my $payment_order = $schema->resultset('PaymentOrder')->create(\%payment_data);
 
     # create BOP object wrapper with provider settings
-	$bop_object = Dancer::Plugin::Interchange6::Business::OnlinePayment->new($provider, %$provider_settings);
+	$bop_object = Dancer2::Plugin::Interchange6::Business::OnlinePayment->new($provider, %$provider_settings);
 
     $bop_object->payment_order($payment_order);
 
@@ -326,7 +326,7 @@ sub _shop_cart {
         $args{users_id} = $user_ref->users_id;
     }
 
-    return Dancer::Plugin::Interchange6::Cart->new( %args );
+    return Dancer2::Plugin::Interchange6::Cart->new( %args );
 };
 
 sub _shop_schema {
@@ -356,7 +356,7 @@ register_plugin;
 
 =head1 ACKNOWLEDGEMENTS
 
-The L<Dancer> developers and community for their great application framework
+The L<Dancer2> developers and community for their great application framework
 and for their quick and competent support.
 
 Peter Mottram for his patches.

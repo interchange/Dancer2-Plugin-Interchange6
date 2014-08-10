@@ -1,12 +1,12 @@
 NAME
-    Dancer::Plugin::Interchange6 - Interchange6 Shop Plugin for Dancer
+    Dancer2::Plugin::Interchange6 - Interchange6 Shop Plugin for Dancer2
 
 VERSION
     Version 0.040
 
 REQUIREMENTS
-    All Interchange6 Dancer applications need to use the
-    Dancer::Session::DBIC engine.
+    All Interchange6 Dancer2 applications need to use the
+    Dancer2::Session::DBIC engine.
 
     The easiest way to configure this is in your main module, just after all
     the `use' statements:
@@ -15,7 +15,7 @@ REQUIREMENTS
        set session_options => {schema => schema};
 
 ROUTES
-    You can use the Dancer::Plugin::Interchange6::Routes plugin bundled with
+    You can use the Dancer2::Plugin::Interchange6::Routes plugin bundled with
     this plugin to setup standard routes for:
 
     product listing
@@ -28,9 +28,9 @@ ROUTES
 
         package MyShop;
 
-        use Dancer ':syntax';
-        use Dancer::Plugin::Interchange6;
-        use Dancer::Plugin::Interchange6::Routes;
+        use Dancer2 ':syntax';
+        use Dancer2::Plugin::Interchange6;
+        use Dancer2::Plugin::Interchange6::Routes;
 
         get '/shop' => sub {
             ...
@@ -42,7 +42,7 @@ ROUTES
 
         true;
 
-    Please refer to Dancer::Plugin::Interchange6::Routes for configuration
+    Please refer to Dancer2::Plugin::Interchange6::Routes for configuration
     options and further information.
 
 HOOKS
@@ -120,12 +120,12 @@ HOOKS
 
 EXPIRE DBIC SESSIONS
     This command expires/manages DBIC sessions and carts. NOTE: For proper
-    functionality please copy/link to Dancer App/bin directory.
+    functionality please copy/link to Dancer2 App/bin directory.
 
         interchange6-expire-sessions
 
 ACKNOWLEDGEMENTS
-    The Dancer developers and community for their great application
+    The Dancer2 developers and community for their great application
     framework and for their quick and competent support.
 
     Peter Mottram for his patches.

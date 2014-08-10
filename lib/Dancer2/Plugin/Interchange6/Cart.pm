@@ -1,10 +1,10 @@
 use utf8;
 
-package Dancer::Plugin::Interchange6::Cart;
+package Dancer2::Plugin::Interchange6::Cart;
 
 =head1 NAME
 
-Dancer::Plugin::Interchange6::Cart
+Dancer2::Plugin::Interchange6::Cart
 
 =head1 DESCRIPTION
 
@@ -15,8 +15,8 @@ Extends L<Interchange6::Cart> to tie cart to L<Interchange6::Schema::Result::Car
 use strict;
 use warnings;
 
-use Dancer qw(:syntax !before !after);
-use Dancer::Plugin::DBIC;
+use Dancer2 qw(:syntax !before !after);
+use Dancer2::Plugin::DBIC;
 
 use Moo;
 use Interchange6::Types;
@@ -28,7 +28,7 @@ use namespace::clean;
 
 =head2 database
 
-The database name as defined in the L<Dancer::Plugin::DBIC> configuration.
+The database name as defined in the L<Dancer2::Plugin::DBIC> configuration.
 
 Attribute is required.
 
@@ -157,13 +157,13 @@ sub BUILD {
 
 =head2 execute_hook
 
-Ties Interchange6 hooks into Dancer's hook system.
+Ties Interchange6 hooks into Dancer2's hook system.
 
 =cut
 
 sub execute_hook {
     my $self = shift;
-    Dancer::Factory::Hook->instance->execute_hooks(@_);
+    Dancer2::Factory::Hook->instance->execute_hooks(@_);
 }
 
 =head2 load_saved_products
@@ -378,7 +378,7 @@ sub _after_cart_set_users_id {
     # change users_id
     my $data = $args[1];
 
-    Dancer::Logger::debug( "Change users_id of $self->id to: ", $data );
+    Dancer2::Logger::debug( "Change users_id of $self->id to: ", $data );
 
     schema( $self->database )->resultset('Cart')->find( $self->id )
       ->update($data);
@@ -399,7 +399,7 @@ sub _after_cart_set_sessions_id {
     # change sessions_id
     my $data = $args[1];
 
-    Dancer::Logger::debug( "Change sessions_id of $self->{id} to: ", $data );
+    Dancer2::Logger::debug( "Change sessions_id of $self->{id} to: ", $data );
 
     schema( $self->database )->resultset('Cart')->find( $self->{id} )
       ->update($data);

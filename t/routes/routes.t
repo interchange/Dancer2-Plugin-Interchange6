@@ -1,10 +1,10 @@
 #! perl
 #
-# Dancer::Test uses some deep voodoo so please be very careful about changing
+# Dancer2::Test uses some deep voodoo so please be very careful about changing
 # the order of the setup parts of these tests. Note that some settings
 # have to be set in config.yml in order to make them work but others we
 # have to set within this script.
-# IMPORTANT: these tests cannot live directly under 't' since Dancer merrily
+# IMPORTANT: these tests cannot live directly under 't' since Dancer2 merrily
 # trashes appdir under certain circumstances when we live there.
 
 use strict;
@@ -22,8 +22,8 @@ use lib File::Spec->catdir( 't', 'routes', 'lib' );
 use Interchange6::Schema;
 use Interchange6::Schema::Populate::CountryLocale;
 
-use Dancer qw/:tests/;
-use Dancer::Plugin::Interchange6;
+use Dancer2 qw/:tests/;
+use Dancer2::Plugin::Interchange6;
 
 diag( "Testing with DBD::SQLite $DBD::SQLite::VERSION" );
 
@@ -54,7 +54,7 @@ my $schema =
 lives_ok { $schema->deploy } "Deploy schema";
 
 use TestApp;
-use Dancer::Test;
+use Dancer2::Test;
 
 # now add some db content
 

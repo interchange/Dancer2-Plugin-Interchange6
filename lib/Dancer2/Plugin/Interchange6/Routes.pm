@@ -1,15 +1,15 @@
-package Dancer::Plugin::Interchange6::Routes;
+package Dancer2::Plugin::Interchange6::Routes;
 
-use Dancer ':syntax';
-use Dancer::Plugin;
-use Dancer::Plugin::Interchange6;
-use Dancer::Plugin::Interchange6::Routes::Account;
-use Dancer::Plugin::Interchange6::Routes::Cart;
-use Dancer::Plugin::Interchange6::Routes::Checkout;
+use Dancer2 ':syntax';
+use Dancer2::Plugin;
+use Dancer2::Plugin::Interchange6;
+use Dancer2::Plugin::Interchange6::Routes::Account;
+use Dancer2::Plugin::Interchange6::Routes::Cart;
+use Dancer2::Plugin::Interchange6::Routes::Checkout;
 
 =head1 NAME
 
-Dancer::Plugin::Interchange6::Routes - Routes for Interchange6 Shop Machine
+Dancer2::Plugin::Interchange6::Routes - Routes for Interchange6 Shop Machine
 
 =head2 ROUTES
 
@@ -170,7 +170,7 @@ sub _setup_routes {
     }
 
     # account routes
-    my $account_routes = Dancer::Plugin::Interchange6::Routes::Account::account_routes($routes_config);
+    my $account_routes = Dancer2::Plugin::Interchange6::Routes::Account::account_routes($routes_config);
 
     get '/' . $routes_config->{account}->{login}->{uri}
         => $account_routes->{login}->{get};
@@ -183,14 +183,14 @@ sub _setup_routes {
 
     if ($routes_config->{cart}->{active}) {
         # routes for cart
-        my $cart_sub = Dancer::Plugin::Interchange6::Routes::Cart::cart_route($routes_config);
+        my $cart_sub = Dancer2::Plugin::Interchange6::Routes::Cart::cart_route($routes_config);
         get '/' . $routes_config->{cart}->{uri} => $cart_sub;
         post '/' . $routes_config->{cart}->{uri} => $cart_sub;
     }
 
     if ($routes_config->{checkout}->{active}) {
         # routes for checkout
-        my $checkout_sub = Dancer::Plugin::Interchange6::Routes::Checkout::checkout_route($routes_config);
+        my $checkout_sub = Dancer2::Plugin::Interchange6::Routes::Checkout::checkout_route($routes_config);
         get '/' . $routes_config->{checkout}->{uri} => $checkout_sub;
         post '/' . $routes_config->{checkout}->{uri} => $checkout_sub;
     }
