@@ -22,7 +22,7 @@ WriteMakefile(
                   'YAML'       => 0,
                   'Interchange6::Schema'     => 0.040,
                   'Interchange6' => 0.040,
-                  'Dancer2'     => 1.3098,
+                  'Dancer2'     => 0,
                   'Dancer2::Session::DBIC' => 0,
                   'Dancer2::Plugin::DBIC' => 0,
                   'Dancer2::Plugin::Auth::Extensible' => 0,
