@@ -15,10 +15,12 @@ README
 t/00-load.t
 t/cart.t
 t/manifest.t
+t/lib/TestAccountApp.pm
 t/pod-coverage.t
 t/pod.t
 t/routes/config.yml
 t/routes/lib/TestApp.pm
+t/routes/account.t
 t/routes/routes.t
 t/routes/views/cart
 t/routes/views/checkout
