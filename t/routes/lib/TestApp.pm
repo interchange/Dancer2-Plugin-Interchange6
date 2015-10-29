@@ -192,8 +192,6 @@ hook 'plugin.interchange6_routes_cart.before_checkout_display' => sub {
 hook 'plugin.interchange6_routes.before_product_display' => sub {
     my $tokens = shift;
 
-    debug "We are now in the BFD hook!";
-    
     $tokens->{name} = $tokens->{product}->name;
 };
 
