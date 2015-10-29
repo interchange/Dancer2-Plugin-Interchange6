@@ -8,7 +8,12 @@ use DBICx::TestDatabase;
 use Interchange6::Schema;
 use Interchange6::Schema::Populate::CountryLocale;
 
-use Dancer2 qw(:tests);
+package shopdb;
+
+use Test::More;
+use Test::Database;
+
+use Dancer2;
 use Dancer2::Plugin::Interchange6;
 
 my @all_handles = Test::Database->handles();
@@ -74,7 +79,7 @@ for my $testdb (@handles) {
     isa_ok($user, 'Interchange6::Schema::Result::User');
 
     # populate country table
-    $schema->populate('Country', $pop_countries);
+#    $schema->populate('Country', $pop_countries);
 
     # check PL country
     $ret = shop_country->find('PL');
@@ -105,18 +110,6 @@ for my $testdb (@handles) {
 
     $ret = shop_product->create(\%product_data);
     isa_ok($ret, 'Interchange6::Schema::Result::Product');
-
-    # create review
-    my %review_data;
-
-    %review_data = (
-        sku => 'F0001',
-        users_id => $user->id,
-        title => 'test',
-        content => 'Text review',
-        rating => 2,
-    );
-
-    $ret = shop_review->create(\%review_data);
-    isa_ok($ret, 'Interchange6::Schema::Result::Review');
 }
+
+done_testing;

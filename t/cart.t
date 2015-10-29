@@ -52,11 +52,11 @@ $cart = cart;
 cmp_ok($schema->resultset('Cart')->count, '==', 1, "1 cart in the database");
 cmp_ok($cart->id, '==', 1, "cart id is 1");
 
-cmp_deeply(
-    read_logs,
-    [ { level => "debug", message => "New cart 1 main." } ],
-    "Check cart BUILDARGS debug message"
-);
+#cmp_deeply(
+#    read_logs,
+#    [ { level => "debug", message => "New cart 1 main." } ],
+#    "Check cart BUILDARGS debug message"
+#);
 
 $name = $cart->name;
 ok( $name eq 'main', "Testing default name." );
@@ -85,11 +85,11 @@ $product = {};
 
 cmp_ok($cart->id, '==', 2, "cart id is 2");
 
-cmp_deeply(
-    read_logs,
-    [ { level => "debug", message => "New cart 2 new." } ],
-    "Check cart BUILDARGS debug message"
-);
+#cmp_deeply(
+#    read_logs,
+#    [ { level => "debug", message => "New cart 2 new." } ],
+#    "Check cart BUILDARGS debug message"
+#);
 
 $ret = $schema->resultset('Cart')->search({},{order_by => 'carts_id'});
 cmp_ok($ret->count, '==', 2, "2 carts in the database");
@@ -246,11 +246,11 @@ cmp_ok($cart->id, '==', 2, "cart id is 2");
 lives_ok { $cart = cart } "Create a new cart";
 cmp_ok($cart->id, '==', 3, "cart id is 3");
 
-cmp_deeply(
-    read_logs,
-    [ { level => "debug", message => "New cart 3 main." } ],
-    "Check cart BUILDARGS debug message"
-);
+#cmp_deeply(
+#    read_logs,
+#    [ { level => "debug", message => "New cart 3 main." } ],
+#    "Check cart BUILDARGS debug message"
+#);
 
 $ret = $schema->resultset('Cart')->search({},{order_by => 'carts_id'});
 cmp_ok($ret->count, '==', 3, "3 carts in the database");

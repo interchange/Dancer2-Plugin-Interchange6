@@ -1,7 +1,6 @@
 package Dancer2::Plugin::Interchange6::Routes::Cart;
 
-use Dancer2 ':syntax';
-use Dancer2::Plugin;
+use Dancer2::Plugin2;
 use Dancer2::Plugin::Interchange6;
 
 =head1 NAME
@@ -10,7 +9,7 @@ Dancer2::Plugin::Interchange6::Routes::Cart - Cart routes for Interchange6 Shop 
 
 =cut
 
-register_hook 'before_cart_display';
+plugin_hooks 'before_cart_display';
 
 =head1 FUNCTIONS
 
@@ -21,6 +20,7 @@ Returns the cart route based on the passed routes configuration.
 =cut
 
 sub cart_route {
+    my $app = shift;
     my $routes_config = shift;
 
     return sub {
@@ -28,21 +28,21 @@ sub cart_route {
         my ($input, $product, $cart, $cart_item, $cart_name, $cart_input,
             $cart_product);
 
-        if ($cart_name = param('cart') && scalar($cart_name)) {
+        if ($cart_name = $app->request->param('cart') && scalar($cart_name)) {
             $cart = cart($cart_name);
         }
         else {
             $cart = cart;
         }
 
-        debug "cart_route cart name: " . $cart->name;
+        $app->log('debug', "cart_route cart name: " . $cart->name);
 
-	if (param('remove')) {
+	if ($app->request->param('remove')) {
 	    # removing item from cart
-	    $cart->remove(param('remove'));
+	    $cart->remove($app->request->param('remove'));
 	}
 
-        if ($input = param('sku')) {
+        if ($input = $app->request->param('sku')) {
             if (scalar($input)) {
                 $product = shop_product($input);
 
@@ -56,13 +56,13 @@ sub cart_route {
                         $user_input{$name} = param($name);
                     }
 
-                    debug "Attributes for $input: ", $attr_ref, ", user input: ", \%user_input;
+                    $app->log('debug', "Attributes for $input: ", $attr_ref, ", user input: ", \%user_input);
                     my %match_info;
 
                     unless ($cart_product = $product->find_variant(\%user_input, \%match_info)) {
-                        warning "Variant not found for ", $product->sku;
-                        session shop_cart_error => {message => 'Variant not found.', info => \%match_info};
-                        return redirect $product->uri;
+                        $app->log('warning', "Variant not found for ", $product->sku);
+                        $app->session->write(shop_cart_error => {message => 'Variant not found.', info => \%match_info});
+                        return $app->redirect($product->uri);
                     };
                 }
                 else {
@@ -78,12 +78,12 @@ sub cart_route {
 		    $cart_input->{quantity} = param('quantity');
 		}
 
-                debug "Cart input: ", $cart_input;
+                $app->log('debug', "Cart input: ", $cart_input);
 
                 $cart_item = $cart->add($cart_input);
 
                 unless ($cart_item) {
-                    warning "Cart error: ", $cart->error;
+                    $app->log('warning', "Cart error: ", $cart->error);
                     $values{cart_error} = $cart->error;
                 }
             }
@@ -96,10 +96,23 @@ sub cart_route {
 
         # call before_cart_display route so template tokens
         # can be injected
-        execute_hook('before_cart_display', \%values);
+        $app->execute_hook(
+            'plugin.interchange6_routes_cart.before_cart_display', \%values);
 
-        template $routes_config->{cart}->{template}, \%values;
+        $app->template($routes_config->{cart}->{template}, \%values);
     }
+}
+
+sub BUILD {
+    my $plugin = shift;
+
+    $plugin->app->add_hook( 
+        Dancer2::Core::Hook->new(
+            name => 'after',
+            code => sub {
+                $plugin->app->execute_hook( 'plugin.interchange6_routes_cart.before_cart_display' );
+            },
+        ) );
 }
 
 1;

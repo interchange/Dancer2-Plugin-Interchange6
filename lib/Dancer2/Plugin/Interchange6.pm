@@ -3,13 +3,14 @@ package Dancer2::Plugin::Interchange6;
 use strict;
 use warnings;
 
-use Dancer2 qw(:syntax !before !after);
-use Dancer2::Plugin;
-use Dancer2::Plugin::DBIC;
-use Dancer2::Plugin::Auth::Extensible;
+use Dancer2::Plugin2;
 
-use Dancer2::Plugin::Interchange6::Cart;
-use Dancer2::Plugin::Interchange6::Business::OnlinePayment;
+#use Dancer2 qw(:syntax !before !after);
+use Dancer2::Plugin::DBIC;
+#use Dancer2::Plugin::Auth::Extensible;
+
+#use Dancer2::Plugin::Interchange6::Cart;
+#use Dancer2::Plugin::Interchange6::Business::OnlinePayment;
 
 =head1 NAME
 
@@ -198,58 +199,94 @@ functionality please copy/link to Dancer2 App/bin directory.
 
 =cut
 
-register_hook(qw/before_cart_add_validate
-                 before_cart_add after_cart_add
-                 before_cart_update after_cart_update
-                 before_cart_remove_validate
-                 before_cart_remove after_cart_remove
-                 before_cart_rename after_cart_rename
-                 before_cart_clear after_cart_clear
-                 before_cart_set_users_id after_cart_set_users_id
-                 before_cart_set_sessions_id after_cart_set_sessions_id
-                /);
+# register_hook(qw/before_cart_add_validate
+#                  before_cart_add after_cart_add
+#                  before_cart_update after_cart_update
+#                  before_cart_remove_validate
+#                  before_cart_remove after_cart_remove
+#                  before_cart_rename after_cart_rename
+#                  before_cart_clear after_cart_clear
+#                  before_cart_set_users_id after_cart_set_users_id
+#                  before_cart_set_sessions_id after_cart_set_sessions_id
+#                 /);
 
-register shop_schema => sub {
-    _shop_schema(@_);
+plugin_keywords qw/shop_schema
+                   shop_resultset
+                   shop_address
+                   shop_attribute
+                   shop_country
+                   shop_navigation
+                   shop_order
+                   shop_product
+                   shop_review
+                   shop_user
+                   shop_cart
+                   cart
+                  /;
+
+has dbic => (
+    is => 'ro',
+    lazy => 1,
+    default => sub {
+        # if the app already has the 'DBIC' plugin loaded, it'll return
+        # it. If not, it'll load it in the app, and then return it.
+        $_[0]->app->with_plugin( 'DBIC' )
+    },
+    handles => { 'schema' => 'schema',
+                 'resultset' => 'resultset',
+             },
+);
+
+sub shop_schema {
+    my $plugin = shift;
+    $plugin->_shop_schema(@_);
 };
 
-register shop_address => sub {
-    _shop_resultset('Address', @_);
+sub shop_address {
+    my $plugin = shift;
+    $plugin->shop_resultset('Address', @_);
 };
 
-register shop_attribute => sub {
-    _shop_resultset('Attribute', @_);
+sub shop_attribute {
+    my $plugin = shift;
+    $plugin->shop_resultset('Attribute', @_);
 };
 
-register shop_country => sub {
-    _shop_resultset('Country', @_);
+sub shop_country {
+    my $plugin = shift;
+    $plugin->shop_resultset('Country', @_);
 };
 
-register shop_navigation => sub {
-    _shop_resultset('Navigation', @_);
+sub shop_navigation {
+    my $plugin = shift;
+    $plugin->shop_resultset('Navigation', @_);
 };
 
-register shop_order => sub {
-    _shop_resultset('Order', @_);
+sub shop_order {
+    my $plugin = shift;
+    $plugin->shop_resultset('Order', @_);
 };
 
-register shop_product => sub {
-    _shop_resultset('Product', @_);
+sub shop_product {
+    my $plugin = shift;
+    $plugin->shop_resultset('Product', @_);
 };
 
-register shop_review => sub {
-    _shop_resultset('Review', @_);
+sub shop_review {
+    my $plugin = shift;
+    $plugin->shop_resultset('Review', @_);
 };
 
-register shop_user => sub {
-    _shop_resultset('User', @_);
+sub shop_user {
+    my $plugin = shift;
+    $plugin->shop_resultset('User', @_);
 };
 
-register shop_charge => sub {
-	my (%args) = @_;
+sub shop_charge {
+	my ($self, %args) = @_;
 	my ($schema, $bop_object, $payment_settings, $provider, $provider_settings);
 
-	$payment_settings = plugin_setting->{payment};
+	$payment_settings = $self->config->payment;
 
     # determine payment provider
     if (exists $args{provider} && $args{provider}) {
@@ -285,7 +322,7 @@ register shop_charge => sub {
     $bop_object->payment_order($payment_order);
 
     # call charge method
-    debug "Charging with the following parameters: ", \%args;
+    $self->log ( 'debug', "Charging with the following parameters: ", \%args );
 
     $bop_object->charge(%args);
 
@@ -306,21 +343,29 @@ register shop_charge => sub {
 	return $bop_object;
 };
 
-register cart => \&_shop_cart;
-register shop_cart => \&_shop_cart;
+sub cart {
+    _shop_cart(@_);
+}
+
+sub shop_cart {
+    _shop_cart(@_);
+}
 
 sub _shop_cart {
-    my (%args, $user_ref);
+    my ($plugin, $app, %args, $user_ref);
+
+    $plugin = shift;
+    $app = $plugin->app;
 
     %args = (
-        sessions_id => session->id,
+        sessions_id => $app->session->id,
         execute_hook => sub {execute_hook(@_)},
     );
 
     # we have a cart name
     $args{name} = $_[0] if @_ == 1;
 
-    if ($user_ref == logged_in_user) {
+    if ($user_ref == $plugin->logged_in_user) {
 
         # user is logged in
         $args{users_id} = $user_ref->users_id;
@@ -330,6 +375,7 @@ sub _shop_cart {
 };
 
 sub _shop_schema {
+    my $plugin = shift;
     my $schema_key;
 
     if (@_) {
@@ -339,20 +385,18 @@ sub _shop_schema {
         $schema_key = 'default';
     }
 
-    return schema($schema_key);
+    return $plugin->schema($schema_key);
 };
 
-sub _shop_resultset {
-    my ($name, $key) = @_;
+sub shop_resultset {
+    my ($plugin, $name, $key) = @_;
 
     if (defined $key) {
-        return resultset($name)->find($key);
+        return $plugin->resultset($name)->find($key);
     }
 
-    return resultset($name);
+    return $plugin->resultset($name);
 };
-
-register_plugin;
 
 =head1 ACKNOWLEDGEMENTS
 

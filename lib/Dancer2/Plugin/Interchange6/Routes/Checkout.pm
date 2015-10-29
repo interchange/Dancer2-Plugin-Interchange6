@@ -1,8 +1,7 @@
 package Dancer2::Plugin::Interchange6::Routes::Checkout;
 
-use Dancer2 ':syntax';
-use Dancer2::Plugin;
-use Dancer2::Plugin::Interchange6;
+use Dancer2::Plugin2;
+use Dancer2::Plugin::Interchange6 ();
 
 =head1 NAME
 
@@ -10,7 +9,7 @@ Dancer2::Plugin::Interchange6::Routes::Checkout - Checkout routes for Interchang
 
 =cut
 
-register_hook 'before_checkout_display';
+plugin_hooks 'before_checkout_display';
 
 =head1 DESCRIPTION
 
@@ -40,6 +39,18 @@ sub checkout_route {
         execute_hook('before_checkout_display', \%values);
         template $routes_config->{checkout}->{template}, \%values;
     }
+}
+
+sub BUILD {
+    my $plugin = shift;
+
+    $plugin->app->add_hook( 
+        Dancer2::Core::Hook->new(
+            name => 'after',
+            code => sub {
+                $plugin->app->execute_hook( 'plugin.interchange6_routes_cart.before_checkout_display' );
+            },
+        ) );
 }
 
 1;

@@ -1,11 +1,10 @@
 package Dancer2::Plugin::Interchange6::Routes;
 
-use Dancer2 ':syntax';
-use Dancer2::Plugin;
+use Dancer2::Plugin2;
 use Dancer2::Plugin::Interchange6;
-use Dancer2::Plugin::Interchange6::Routes::Account;
-use Dancer2::Plugin::Interchange6::Routes::Cart;
-use Dancer2::Plugin::Interchange6::Routes::Checkout;
+use Dancer2::Plugin::Interchange6::Routes::Account ();
+use Dancer2::Plugin::Interchange6::Routes::Cart ();
+use Dancer2::Plugin::Interchange6::Routes::Checkout ();
 
 =head1 NAME
 
@@ -122,12 +121,32 @@ Disable parts of layout on the login view:
 
 =cut
 
-register shop_setup_routes => sub {
-    _setup_routes();
-};
+plugin_keywords (qw/shop_setup_routes/);
+plugin_hooks (qw/before_product_display before_navigation_display/);
 
-register_hook (qw/before_product_display before_navigation_display/);
-register_plugin;
+has auth_extensible => (
+    is => 'ro',
+    lazy => 1,
+    default => sub {
+        # if the app already has the 'DBIC' plugin loaded, it'll return
+        # it. If not, it'll load it in the app, and then return it.
+        scalar $_[0]->app->with_plugins( 'Auth::Extensible' )
+    },
+    handles => { 'logged_in_user' => 'logged_in_user' },
+);
+
+has shop => (
+    is => 'ro',
+    lazy => 1,
+    default => sub {
+        # if the app already has the 'Interchange6' plugin loaded, it'll return
+        # it. If not, it'll load it in the app, and then return it.
+        $_[0]->app->with_plugin( 'Interchange6' )
+    },
+    handles => { 'shop_cart' => 'shop_cart',
+                 'shop_product' => 'shop_product',
+             },
+);
 
 our $object_autodetect = 0;
 
@@ -154,9 +173,11 @@ our %route_defaults = (
     product => {template => 'product'},
 );
 
-sub _setup_routes {
+sub shop_setup_routes {
+    my $plugin = shift;
     my $sub;
-    my $plugin_config = plugin_setting;
+    my $app = $plugin->app;
+    my $plugin_config = $plugin->config;
 
     # update settings with defaults
     my $routes_config = _config_routes($plugin_config, \%route_defaults);
@@ -170,84 +191,111 @@ sub _setup_routes {
     }
 
     # account routes
-    my $account_routes = Dancer2::Plugin::Interchange6::Routes::Account::account_routes($routes_config);
+    my $account_routes = Dancer2::Plugin::Interchange6::Routes::Account::account_routes($plugin, $routes_config);
 
-    get '/' . $routes_config->{account}->{login}->{uri}
-        => $account_routes->{login}->{get};
+    $app->add_route(
+        method => 'get',
+        regexp => '/' . $routes_config->{account}->{login}->{uri},
+        code => $account_routes->{login}->{get},
+    );
 
-    post '/' . $routes_config->{account}->{login}->{uri}
-        => $account_routes->{login}->{post};
+    $app->add_route(
+        method => 'post',
+        regexp => '/' . $routes_config->{account}->{login}->{uri},
+        code => $account_routes->{login}->{post},
+    );
 
-    any ['get', 'post'] => '/' . $routes_config->{account}->{logout}->{uri}
-        => $account_routes->{logout}->{any};
+    #post '/' . $routes_config->{account}->{login}->{uri}
+    #    => $account_routes->{login}->{post};
+
+   # any ['get', 'post'] => '/' . $routes_config->{account}->{logout}->{uri}
+   #     => $account_routes->{logout}->{any};
 
     if ($routes_config->{cart}->{active}) {
         # routes for cart
         my $cart_sub = Dancer2::Plugin::Interchange6::Routes::Cart::cart_route($routes_config);
-        get '/' . $routes_config->{cart}->{uri} => $cart_sub;
-        post '/' . $routes_config->{cart}->{uri} => $cart_sub;
+
+        for my $method (qw/get post/) {
+            $app->add_route(
+                method => $method,
+                regexp => '/' . $routes_config->{cart}->{uri},
+                code => $cart_sub,
+            );
+        }
+        
     }
 
     if ($routes_config->{checkout}->{active}) {
         # routes for checkout
         my $checkout_sub = Dancer2::Plugin::Interchange6::Routes::Checkout::checkout_route($routes_config);
-        get '/' . $routes_config->{checkout}->{uri} => $checkout_sub;
-        post '/' . $routes_config->{checkout}->{uri} => $checkout_sub;
+    #    get '/' . $routes_config->{checkout}->{uri} => $checkout_sub;
+    #    post '/' . $routes_config->{checkout}->{uri} => $checkout_sub;
     }
 
     # fallback route for flypage and navigation
-    get qr{/(?<path>.+)} => sub {
-        my $path = captures->{'path'};
-        my $product;
+    $app->add_route(
+        method => 'get',
+        regexp => qr{/(?<path>.+)},
+        code => sub {fallback_route($plugin)},
+    );
+}
 
-        # check for a matching product by uri
-        my $product_result = shop_product->search({uri => $path});
+sub fallback_route {
+    my $plugin = shift;
+    my $app = $plugin->app;
+    my $path = $app->request->captures->{'path'};
+    my $product;
 
-        if ($product_result > 1) {
-            die "Ambigious result on path $path.";
-        }
+    $app->log('debug', "Entering fallback route through $path");
 
-        if ($product_result == 1) {
-            $product = $product_result->next;
+    # check for a matching product by uri
+    my $product_result = $plugin->shop_product->search({uri => $path});
+
+    if ($product_result > 1) {
+        die "Ambigious result on path $path.";
+    }
+
+    if ($product_result == 1) {
+        $product = $product_result->next;
+    }
+    else {
+        # check for a matching product by sku
+        $product = $plugin->shop_product($path);
+        
+        if ($product) {
+            if ($product->uri
+                    && $product->uri ne $path) {
+                # permanent redirect to specific URL
+                $app->log('debug', "Redirecting permanently to product uri ", $product->uri,
+                          " for $path.");
+                return $app->redirect($app->request->uri_for($product->uri), 301);
+            }
         }
         else {
-            # check for a matching product by sku
-            $product = shop_product($path);
-
-            if ($product) {
-                if ($product->uri
-                    && $product->uri ne $path) {
-                    # permanent redirect to specific URL
-                    debug "Redirecting permanently to product uri ", $product->uri,
-                        " for $path.";
-                    return redirect(uri_for($product->uri), 301);
-                }
-            }
-            else {
-                # no matching product found
-                undef $product;
-            }
+            # no matching product found
+            undef $product;
         }
+    }
+    if ($product) {
+        if ($product->active) {
+            # flypage
+            my $tokens = {product => $product};
+            
+            $app->execute_hook('plugin.interchange6_routes.before_product_display', $tokens);
 
-        if ($product) {
-            if ($product->active) {
-                # flypage
-                my $tokens = {product => $product};
-
-                execute_hook('before_product_display', $tokens);
-
-                my $output = template $routes_config->{product}->{template}, $tokens;
-
-                # temporary way to erase cart errors from missing variants
-                session shop_cart_error => undef;
-
-                return $output;
-            }
-            else {
-                # discontinued
-                status 'not_found';
-                forward 404; 
-            }
+            $app->log('debug', "Rendering template: ($routes_config->{product}->{template} "); # with tokens. ", $tokens);
+            
+            my $output = $app->template($routes_config->{product}->{template}, $tokens);
+            
+            # temporary way to erase cart errors from missing variants
+            $app->session->write(shop_cart_error => undef);
+            
+            return $output;
+        }
+        else {
+            # discontinued
+            $app->status('not_found');
+            $app-forward('404');
         }
 
         # check for page number
@@ -301,14 +349,14 @@ sub _setup_routes {
             }
 
             # retrieve navigation attribute for template
-	    my $template = $routes_config->{navigation}->{template};
+            my $template = $routes_config->{navigation}->{template};
 
-	    if (my $attr_value = $nav->find_attribute_value('template')) {
-		$template = $attr_value;
-	    }
+            if (my $attr_value = $nav->find_attribute_value('template')) {
+                $template = $attr_value;
+            }
 
             my $tokens = {navigation => $nav,
-			  template => $template,
+                          template => $template,
                           products => $products,
                           count => $nav_products->count,
                           pager => $nav_products->pager,
@@ -320,9 +368,9 @@ sub _setup_routes {
         }
 
         # display not_found page
-        status 'not_found';
-        forward 404;
-    };
+        $app->status('not_found');
+        $app->forward('404');
+    }
 }
 
 sub _config_routes {

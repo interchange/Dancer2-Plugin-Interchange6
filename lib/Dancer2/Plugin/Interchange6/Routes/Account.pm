@@ -3,8 +3,8 @@ package Dancer2::Plugin::Interchange6::Routes::Account;
 use strict;
 use warnings;
 
-use Dancer2 ':syntax';
-use Dancer2::Plugin;
+use Moo;
+use Dancer2::Plugin2;
 use Dancer2::Plugin::Interchange6;
 use Dancer2::Plugin::Auth::Extensible;
 
@@ -19,7 +19,29 @@ login and logout
 
 =cut
 
-register_hook 'before_login_display';
+#register_hook 'before_login_display';
+
+has auth_extensible => (
+    is => 'ro',
+    lazy => 1,
+    default => sub {
+        # if the app already has the 'DBIC' plugin loaded, it'll return
+        # it. If not, it'll load it in the app, and then return it.
+        scalar $_[0]->app->with_plugins( 'Auth::Extensible' )
+    },
+    handles => { 'logged_in_user' => 'logged_in_user' },
+);
+
+has shop => (
+    is => 'ro',
+    lazy => 1,
+    default => sub {
+        # if the app already has the 'DBIC' plugin loaded, it'll return
+        # it. If not, it'll load it in the app, and then return it.
+        scalar $_[0]->app->with_plugins( 'Interchange6' )
+    },
+    handles => { 'shop_cart' => 'shop_cart' },
+);
 
 =head1 FUNCTIONS
 
@@ -30,20 +52,23 @@ Returns the account routes based on the passed routes configuration.
 =cut
 
 sub account_routes {
-    my $routes_config = shift;
+    my ($plugin, $routes_config) = @_;
     my %routes;
 
     $routes{login}->{get} = sub {
-        return redirect '/' if logged_in_user;
+        my $app = shift;
+        my $auth_extensible;
+        
+        return $app->redirect('/') if $plugin->logged_in_user;
 
         my %values;
 
-        if ( vars->{login_failed} ) {
+        if ( $app->request->vars->{login_failed} ) {
             $values{error} = "Login failed";
         }
 
         # record return_url in template tokens
-        if (my $return_url = param('return_url')) {
+        if (my $return_url = $app->request->param('return_url')) {
             $values{return_url} = $return_url;
         }
 
@@ -52,31 +77,38 @@ sub account_routes {
         execute_hook('before_login_display', \%values);
 
         # record return_url in the session to reuse it in post route
-        session return_url => $values{return_url};
+        $app->session->write( return_url => $values{return_url} );
 
         template $routes_config->{account}->{login}->{template}, \%values;
     };
 
     $routes{login}->{post} = sub {
-        return redirect '/' if logged_in_user;
+        my $app = shift;
+
+        return $app->redirect('/') if $plugin->auth_extensible->logged_in_user;
 
         my $login_route = '/' . $routes_config->{account}->{login}->{uri};
 
-        my $user = shop_user->find({ username => params->{username}});
+        my $user = $plugin->shop->shop_user->find({
+            username => $app->request->params->{username}
+        });
 
         my ($success, $realm, $current_cart);
 
         if ($user) {
             # remember current cart object
-            $current_cart = shop_cart;
+            $current_cart = $app->shop_cart;
 
-            ($success, $realm) = authenticate_user( params->{username}, params->{password} );
+            ($success, $realm) = authenticate_user(
+                $app->request->params->{username},
+                $app->request->params->{password}
+            );
         }
 
         if ($success) {
-            session logged_in_user => $user->username;
-            session logged_in_user_id => $user->id;
-            session logged_in_user_realm => $realm;
+            $app->session->write(logged_in_user => $user->username);
+            $app->session->write(logged_in_user_id => $user->id);
+            $app->session->write(logged_in_user_realm => $realm);
 
             if (! $current_cart->users_id) {
                 $current_cart->users_id($user->id);
@@ -86,36 +118,43 @@ sub account_routes {
             # sessions were sessions_id is undef in db cart
             $current_cart->load_saved_products;
 
-            if ( session('return_url') ) {
-                my $url = session('return_url');
-                session return_url => undef;
-                return redirect $url;
+            if ( $app->session->read('return_url') ) {
+                my $url = $app->session->read('return_url');
+                $app->session->delete('return_url');
+                return $app->redirect($url);
             }
             else {
-                return redirect '/'
-                  . $routes_config->{account}->{login}->{success_uri};
+                return $app->redirect(
+                    '/' . $routes_config->{account}->{login}->{success_uri});
             }
         } else {
-            debug "Authentication failed for ", params->{username};
+            $app->log('debug', 'Authentication failed for ',
+                      $app->request->params->{username}
+                  );
 
-            var login_failed => 1;
-            return forward $login_route, { return_url => params->{return_url} }, { method => 'get' };
+            $app->request->var(login_failed => 1);
+
+            return $app->forward( $login_route, {
+                return_url => $app->request->params->{return_url}
+            }, { method => 'get' }
+            );
         }
     };
 
     $routes{logout}->{any} = sub {
-        my $cart = cart;
+        my $app = shift;
+        my $cart = $app->shop_cart;
         if ( $cart->count > 0 ) {
             # save our items for next login
             shop_cart->sessions_id(undef);
         }
         # any empty cart with sessions_id matching our session id will be
         # destroyed here
-        session->destroy;
-        return redirect '/';
+        $app->session->destroy;
+        return $app->redirect('/');
     };
 
     return \%routes;
 }
 
-true;
+1;
