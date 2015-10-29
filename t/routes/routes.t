@@ -33,13 +33,10 @@ my $mech = Test::WWW::Mechanize::PSGI->new(
 # product
 
 $mech->get_ok ( '/kilo-of-bananas' , "GET /kilo-of-bananas (product route)");
-$mech->content_like( qr/name="bananas"/, 'found bananas');
+$mech->content_like( qr|name="bananas"|, 'found bananas');
 
-# lives_ok { $resp = dancer_response GET => '/kilo-of-potatoes' }
-# "GET /kilo-of-potatoes (product route)";
-
-# response_status_is $resp => 200, 'status is ok';
-# response_content_like $resp => qr|name="potatoes"|, 'found potatoes';
+$mech->get_ok ( '/kilo-of-potatoes' , "GET /kilo-of-potatoes (product route)");
+$mech->content_like ( qr|name="potatoes"|, 'found potatoes');
 
 # lives_ok { $resp = dancer_response GET => '/CAR002' }
 # "GET /CAR002 (product route)";
