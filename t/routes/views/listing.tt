@@ -1,2 +1,2 @@
-name="<% name %>"
-products="<% products %>"
+name="[% name %]"
+products="[% products %]"
