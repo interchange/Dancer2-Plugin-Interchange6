@@ -45,23 +45,17 @@ $mech->get_ok ( '/CAR002' , "GET /CAR002 (product route)" );
 #   [ Location => 'http://localhost/kilo-of-carrots' ],
 #   "Check redirect path";
 
-# # navigation
+# navigation
 
-# lives_ok { $resp = dancer_response GET => '/fruit' }
-# "GET /fruit (navigation route)";
+$mech->get_ok ( '/fruit', "GET /fruit (navigation route)");
+$mech->content_like ( qr|name="Fruit"|, 'found Fruit' );
+$mech->content_like ( qr|products="bananas,oranges"|,
+                      'found bananas,oranges');
 
-# response_status_is $resp    => 200,              'status is ok';
-# response_content_like $resp => qr|name="Fruit"|, 'found Fruit';
-# response_content_like $resp => qr|products="bananas,oranges"|,
-#   'found bananas,oranges';
-
-# lives_ok { $resp = dancer_response GET => '/vegetables' }
-# "GET /vegetables (navigation route)";
-
-# response_status_is $resp => 200, 'status is ok';
-# response_content_like $resp => qr|name="Vegetables"|, 'found Vegetables';
-# response_content_like $resp => qr|products="carrots,potatoes"|,
-#   'found carrots,potatoes';
+$mech->get_ok ( '/vegetables', "GET /vegetables (navigation route)" );
+$mech->content_like ( qr|name="Vegetables"|, 'found Vegetables' );
+$mech->content_like ( qr|products="carrots,potatoes"|,
+                      'found carrots,potatoes' );
 
 # # cart
 
