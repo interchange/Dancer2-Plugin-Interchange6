@@ -122,7 +122,9 @@ Disable parts of layout on the login view:
 =cut
 
 plugin_keywords (qw/shop_setup_routes/);
-plugin_hooks (qw/before_product_display before_navigation_display/);
+plugin_hooks (qw/before_product_display
+                 before_navigation_search
+                 before_navigation_display/);
 
 has auth_extensible => (
     is => 'ro',
@@ -144,6 +146,7 @@ has shop => (
         $_[0]->app->with_plugin( 'Interchange6' )
     },
     handles => { 'shop_cart' => 'shop_cart',
+                 'shop_navigation' => 'shop_navigation',
                  'shop_product' => 'shop_product',
              },
 );
@@ -255,50 +258,36 @@ sub fallback_route {
     $app->log('debug', "Entering fallback route through $path");
 
     # check for a matching product by uri
-    my $product_result = $plugin->shop_product->search({uri => $path});
+    my $product = $plugin->shop_product->find({uri => $path});
 
-    if ($product_result > 1) {
-        die "Ambigious result on path $path.";
-    }
+    if (! defined $product) {
 
-    if ($product_result == 1) {
-        $product = $product_result->next;
-    }
-    else {
         # check for a matching product by sku
         $product = $plugin->shop_product($path);
-        
+
         if ($product) {
             if ($product->uri
-                    && $product->uri ne $path) {
+                && $product->uri ne $path) {
                 # permanent redirect to specific URL
-                $app->log('debug', "Redirecting permanently to product uri ", $product->uri,
-                          " for $path.");
-                return $app->redirect($app->request->uri_for($product->uri), 301);
+                $app->log('debug', "Redirecting permanently to product uri ",
+                          $product->uri, " for $path.");
+                return $app->redirect(
+                    $app->request->uri_for($product->uri), 301);
             }
         }
-        else {
-            # no matching product found
-            undef $product;
-        }
     }
+
     if ($product) {
         if ($product->active) {
             # flypage
             my $tokens = {product => $product};
-            
-            $app->execute_hook('plugin.interchange6_routes.before_product_display', $tokens);
 
-            $app->log( 'debug', "Rendering template: ",
-                       $plugin->routes_config->{product}->{template});
-            
+            $app->execute_hook('plugin.interchange6_routes.before_product_display', $tokens);
             my $output = $app->template($plugin->routes_config->{product}->{template}, $tokens);
 
-            $app->log('debug', "Output: $output.");
-            
             # temporary way to erase cart errors from missing variants
             $app->session->write(shop_cart_error => undef);
-            
+
             return $output;
         }
         else {
@@ -306,80 +295,84 @@ sub fallback_route {
             $app->status('not_found');
             $app-forward('404');
         }
-
-        # check for page number
-        my $page;
-
-        if ($path =~ s%/([1-9][0-9]*)$%%) {
-            $page = $1;
-        }
-        else {
-            $page = 1;
-        }
-
-        # first check for navigation item
-        my $navigation_result = shop_navigation->search({uri => $path});
-
-        if ($navigation_result > 1) {
-            die "Ambigious result on path $path.";
-        }
-
-        if ($navigation_result == 1) {
-            # navigation item found
-            my $nav = $navigation_result->next;
-
-            # search parameters
-            my $search_args = {
-                conditions => {
-                    # only active items
-                    active => 1,
-                },
-                attributes => {
-                    rows => $plugin->routes_config->{navigation}->{records},
-                    page => $page},
-            };
-
-            my $products;
-
-            my $nav_products = $nav->search_related('navigation_products')->search_related(
-                'product',
-                $search_args->{conditions},
-                $search_args->{attributes},
-            );
-
-            if ($object_autodetect) {
-                $products = $nav_products;
-            }
-            else {
-                while (my $rec = $nav_products->next) {
-                    push @$products, $rec;
-                    next if @$products > 200;
-                }
-            }
-
-            # retrieve navigation attribute for template
-            my $template = $plugin->routes_config->{navigation}->{template};
-
-            if (my $attr_value = $nav->find_attribute_value('template')) {
-                $template = $attr_value;
-            }
-
-            my $tokens = {navigation => $nav,
-                          template => $template,
-                          products => $products,
-                          count => $nav_products->count,
-                          pager => $nav_products->pager,
-                         };
-
-            execute_hook('before_navigation_display', $tokens);
-
-            return template $tokens->{template}, $tokens;
-        }
-
-        # display not_found page
-        $app->status('not_found');
-        $app->forward('404');
     }
+
+    # check for page number
+    my $page;
+
+    if ($path =~ s%/([1-9][0-9]*)$%%) {
+        $page = $1;
+    } else {
+        $page = 1;
+    }
+
+    # first check for navigation item
+    my $nav = $plugin->shop_navigation->find({uri => $path});
+
+    if (defined $nav) {
+
+        # navigation item found
+
+        # retrieve navigation attribute for template
+        my $template = $plugin->routes_config->{navigation}->{template};
+
+        if ( my $attr_value = $nav->find_attribute_value('template') ) {
+            $app->log(debug => "Change template name from $template to $attr_value due to navigation attribute.");
+            $template = $attr_value;
+        }
+
+        my $tokens = {
+            navigation => $nav,
+            page       => $page,
+            template   => $template
+        };
+
+        $app->execute_hook('plugin.interchange6_routes.before_navigation_search', $tokens);
+
+        # Find product listing for this nav for active products only.
+        # In order_by me refers to navigation_products.
+
+        my $products =
+            $tokens->{navigation}
+            ->navigation_products
+            ->search_related('product')
+            ->active
+            ->listing( { users_id => $app->session->read('logged_in_user_id') } )
+            ->order_by('!me.priority,!product.priority');
+
+        if ( defined $plugin->routes_config->{navigation}->{records} ) {
+
+            # records per page is set in configuration so page the
+            # result set
+
+            $products =
+                $products->rows( $plugin->routes_config->{navigation}->{records} )
+                ->page( $tokens->{page} );
+        }
+
+        # get a pager
+
+        $tokens->{pager} = $products->pager;
+
+        # can template autodetect objects?
+
+        if (!$object_autodetect) {
+            $products = [$products->all];
+        }
+
+        $tokens->{products} = $products;
+
+        $app->execute_hook(
+            'plugin.interchange6_routes.before_navigation_display',
+            $tokens);
+
+        $app->log(debug => "Using template $tokens->{template}."); 
+        return $app->template($tokens->{template}, $tokens);
+    }
+
+    # display not_found page
+    $app->status('not_found');
+    $app->forward('404');
 }
 
 sub _config_routes {
