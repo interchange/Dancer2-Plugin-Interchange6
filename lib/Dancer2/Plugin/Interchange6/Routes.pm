@@ -148,6 +148,10 @@ has shop => (
              },
 );
 
+has routes_config => (
+    is => 'rwp',
+);
+
 our $object_autodetect = 0;
 
 our %route_defaults = (
@@ -180,10 +184,12 @@ sub shop_setup_routes {
     my $plugin_config = $plugin->config;
 
     # update settings with defaults
-    my $routes_config = _config_routes($plugin_config, \%route_defaults);
+    $plugin->_set_routes_config(
+        _config_routes( $plugin_config, \%route_defaults )
+            );
 
     # display warnings
-    _config_warnings($routes_config);
+    _config_warnings($plugin->routes_config);
 
     # check whether template engine has object autodetect
     if (config->{template} eq 'template_flute') {
@@ -191,45 +197,45 @@ sub shop_setup_routes {
     }
 
     # account routes
-    my $account_routes = Dancer2::Plugin::Interchange6::Routes::Account::account_routes($plugin, $routes_config);
+    my $account_routes = Dancer2::Plugin::Interchange6::Routes::Account::account_routes($plugin, $plugin->routes_config);
 
     $app->add_route(
         method => 'get',
-        regexp => '/' . $routes_config->{account}->{login}->{uri},
+        regexp => '/' . $plugin->routes_config->{account}->{login}->{uri},
         code => $account_routes->{login}->{get},
     );
 
     $app->add_route(
         method => 'post',
-        regexp => '/' . $routes_config->{account}->{login}->{uri},
+        regexp => '/' . $plugin->routes_config->{account}->{login}->{uri},
         code => $account_routes->{login}->{post},
     );
 
-    #post '/' . $routes_config->{account}->{login}->{uri}
+    #post '/' . $plugin->routes_config->{account}->{login}->{uri}
     #    => $account_routes->{login}->{post};
 
-   # any ['get', 'post'] => '/' . $routes_config->{account}->{logout}->{uri}
+   # any ['get', 'post'] => '/' . $plugin->routes_config->{account}->{logout}->{uri}
    #     => $account_routes->{logout}->{any};
 
-    if ($routes_config->{cart}->{active}) {
+    if ($plugin->routes_config->{cart}->{active}) {
         # routes for cart
-        my $cart_sub = Dancer2::Plugin::Interchange6::Routes::Cart::cart_route($routes_config);
+        my $cart_sub = Dancer2::Plugin::Interchange6::Routes::Cart::cart_route($plugin->routes_config);
 
         for my $method (qw/get post/) {
             $app->add_route(
                 method => $method,
-                regexp => '/' . $routes_config->{cart}->{uri},
+                regexp => '/' . $plugin->routes_config->{cart}->{uri},
                 code => $cart_sub,
             );
         }
         
     }
 
-    if ($routes_config->{checkout}->{active}) {
+    if ($plugin->routes_config->{checkout}->{active}) {
         # routes for checkout
-        my $checkout_sub = Dancer2::Plugin::Interchange6::Routes::Checkout::checkout_route($routes_config);
-    #    get '/' . $routes_config->{checkout}->{uri} => $checkout_sub;
-    #    post '/' . $routes_config->{checkout}->{uri} => $checkout_sub;
+        my $checkout_sub = Dancer2::Plugin::Interchange6::Routes::Checkout::checkout_route($plugin->routes_config);
+    #    get '/' . $plugin->routes_config->{checkout}->{uri} => $checkout_sub;
+    #    post '/' . $plugin->routes_config->{checkout}->{uri} => $checkout_sub;
     }
 
     # fallback route for flypage and navigation
@@ -283,9 +289,11 @@ sub fallback_route {
             
             $app->execute_hook('plugin.interchange6_routes.before_product_display', $tokens);
 
-            $app->log('debug', "Rendering template: ($routes_config->{product}->{template} "); # with tokens. ", $tokens);
+            $app->log('debug', "Rendering template: ($plugin->routes_config->{product}->{template} "); # with tokens. ", $tokens);
             
-            my $output = $app->template($routes_config->{product}->{template}, $tokens);
+            my $output = $app->template($plugin->routes_config->{product}->{template}, $tokens);
+
+            $app->log('debug', "Output: $output.");
             
             # temporary way to erase cart errors from missing variants
             $app->session->write(shop_cart_error => undef);
@@ -326,7 +334,7 @@ sub fallback_route {
                     active => 1,
                 },
                 attributes => {
-                    rows => $routes_config->{navigation}->{records},
+                    rows => $plugin->routes_config->{navigation}->{records},
                     page => $page},
             };
 
@@ -349,7 +357,7 @@ sub fallback_route {
             }
 
             # retrieve navigation attribute for template
-            my $template = $routes_config->{navigation}->{template};
+            my $template = $plugin->routes_config->{navigation}->{template};
 
             if (my $attr_value = $nav->find_attribute_value('template')) {
                 $template = $attr_value;
