@@ -3,7 +3,7 @@ package Dancer2::Plugin::Interchange6::Routes;
 use Dancer2::Plugin2;
 use Dancer2::Plugin::Interchange6;
 use Dancer2::Plugin::Interchange6::Routes::Account ();
-use Dancer2::Plugin::Interchange6::Routes::Cart ();
+use Dancer2::Plugin::Interchange6::Routes::Cart;
 use Dancer2::Plugin::Interchange6::Routes::Checkout ();
 
 =head1 NAME
@@ -289,7 +289,8 @@ sub fallback_route {
             
             $app->execute_hook('plugin.interchange6_routes.before_product_display', $tokens);
 
-            $app->log('debug', "Rendering template: ($plugin->routes_config->{product}->{template} "); # with tokens. ", $tokens);
+            $app->log( 'debug', "Rendering template: ",
+                       $plugin->routes_config->{product}->{template});
             
             my $output = $app->template($plugin->routes_config->{product}->{template}, $tokens);
 

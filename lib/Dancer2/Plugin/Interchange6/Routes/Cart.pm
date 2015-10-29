@@ -106,6 +106,8 @@ sub cart_route {
 sub BUILD {
     my $plugin = shift;
 
+    return;
+    
     $plugin->app->add_hook( 
         Dancer2::Core::Hook->new(
             name => 'after',

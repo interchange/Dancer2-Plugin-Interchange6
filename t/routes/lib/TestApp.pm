@@ -166,16 +166,16 @@ get '/sessionid' => sub {
     return session->id;
 };
 
-hook 'plugin.interchange6_routes_cart.before_cart_display' => sub {
-     my $tokens = shift;
+# hook 'plugin.interchange6_routes_cart.before_cart_display' => sub {
+#      my $tokens = shift;
 
-     $tokens->{cart} = join(
-         ",",
-         sort map {
-             join( ':', $_->{sku}, $_->{name}, $_->{quantity}, $_->{price} )
-         } @{ $tokens->{cart} }
-     );
-};
+#      $tokens->{cart} = join(
+#          ",",
+#          sort map {
+#              join( ':', $_->{sku}, $_->{name}, $_->{quantity}, $_->{price} )
+#          } @{ $tokens->{cart} }
+#      );
+# };
 
 hook 'plugin.interchange6_routes_cart.before_checkout_display' => sub {
     my $tokens = shift;
@@ -191,6 +191,8 @@ hook 'plugin.interchange6_routes_cart.before_checkout_display' => sub {
 hook 'plugin.interchange6_routes.before_product_display' => sub {
     my $tokens = shift;
 
+    debug "We are now in the BFD hook!";
+    
     $tokens->{name} = $tokens->{product}->name;
 };
 
@@ -204,7 +206,6 @@ hook 'plugin.interchange6_routes.before_navigation_display' => sub {
 
 hook 'plugin.interchange6_routes.before_template_display' => sub {
     my $tokens = shift;
-
 
 
 };
