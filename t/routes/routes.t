@@ -25,8 +25,11 @@ diag( "Testing with DBD::SQLite $DBD::SQLite::VERSION" );
 use Test::WWW::Mechanize::PSGI;
 
 my $mech = Test::WWW::Mechanize::PSGI->new(
-    app =>  TestApp->to_app
+    app =>  TestApp->to_app,
+    max_redirect => 0,
 );
+
+my $loc;
 
 # product
 
@@ -36,12 +39,12 @@ $mech->content_like( qr|name="bananas"|, 'found bananas');
 $mech->get_ok ( '/kilo-of-potatoes' , "GET /kilo-of-potatoes (product route)");
 $mech->content_like ( qr|name="potatoes"|, 'found potatoes');
 
-$mech->get_ok ( '/CAR002' , "GET /CAR002 (product route)" );
-
-# response_status_is $resp => 301, 'status is 301';
-# response_headers_include $resp =>
-#   [ Location => 'http://localhost/kilo-of-carrots' ],
-#   "Check redirect path";
+$mech->get ( '/CAR002' );
+ok ($mech->status == 301, "Redirect on GET /CAR002 (product route)");
+$loc = $mech->response->header('Location');
+ok ($loc eq 'http://localhost/kilo-of-carrots',
+    'Redirect location for GET /CAR002 (product route)')
+    || diag "Redirect location: $loc.";
 
 # navigation
 
