@@ -1,7 +1,5 @@
 #! perl
 #
-# IMPORTANT: these tests cannot live directly under 't' since Dancer2 merrily
-# trashes appdir under certain circumstances when we live there.
 
 use strict;
 use warnings;
