@@ -130,7 +130,7 @@ has auth_extensible => (
     default => sub {
         # if the app already has the 'DBIC' plugin loaded, it'll return
         # it. If not, it'll load it in the app, and then return it.
-        scalar $_[0]->app->with_plugins( 'Auth::Extensible' )
+        $_[0]->app->with_plugin( 'Auth::Extensible' )
     },
     handles => { 'logged_in_user' => 'logged_in_user' },
 );
