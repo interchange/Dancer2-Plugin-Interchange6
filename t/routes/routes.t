@@ -38,8 +38,7 @@ $mech->content_like( qr|name="bananas"|, 'found bananas');
 $mech->get_ok ( '/kilo-of-potatoes' , "GET /kilo-of-potatoes (product route)");
 $mech->content_like ( qr|name="potatoes"|, 'found potatoes');
 
-# lives_ok { $resp = dancer_response GET => '/CAR002' }
-# "GET /CAR002 (product route)";
+$mech->get_ok ( '/CAR002' , "GET /CAR002 (product route)" );
 
 # response_status_is $resp => 301, 'status is 301';
 # response_headers_include $resp =>
