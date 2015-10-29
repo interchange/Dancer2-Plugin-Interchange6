@@ -102,14 +102,14 @@ $mech->content_like ( qr|products="carrots,potatoes"|,
 # lives_ok { $resp = dancer_response GET => '/sessionid' } "GET /sessionid";
 # $sessionid = $resp->content;
 
-# lives_ok { $resp = dancer_response GET => '/private' }
-# "GET /private (login restricted)";
+$mech->get( '/private' );
+ok ($mech->status == 302, "Redirect on GET /private (login route)");
+$loc = $mech->response->header('Location');
+ok ($loc eq 'http://localhost/login?return_url=%2Fprivate',
+    'Redirect location on GET /private (login route)')
+    || diag "Redirect location: $loc.";
 
-# response_redirect_location_is $resp =>
-#   'http://localhost/login?return_url=%2Fprivate',
-#   "Redirected to /login";
-
-# lives_ok { $resp = dancer_response GET => '/login' } "GET /login";
+$mech->get_ok( '/login', "GET /login" );
 
 # response_status_is $resp    => 200,            'status is ok';
 # response_content_like $resp => qr/Login form/, 'got login page';
@@ -118,12 +118,13 @@ $mech->content_like ( qr|products="carrots,potatoes"|,
 
 # read_logs;    # clear logs
 
-# %form = (
-#     username => 'testuser',
-#     password => 'badpassword'
-# );
+my %form = (
+    username => 'testuser',
+    password => 'badpassword'
+);
 
-# lives_ok { $resp = dancer_response( POST => '/login', { body => {%form} } ) }
+$mech->post_ok( '/login', { body => {%form}});
+
 # "POST /login with bad password";
 
 # response_status_is $resp    => 200,            'status is ok';
@@ -214,7 +215,7 @@ $mech->content_like ( qr|products="carrots,potatoes"|,
 # lives_ok { $resp = dancer_response GET => '/private' }
 # "GET /private (login restricted)";
 
-# response_redirect_location_is $resp =>
+ # response_redirect_location_is $resp =>
 #   'http://localhost/login?return_url=%2Fprivate',
 #   "Redirected to /login";
 
