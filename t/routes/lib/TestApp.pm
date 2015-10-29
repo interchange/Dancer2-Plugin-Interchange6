@@ -8,6 +8,7 @@ use Data::Dumper;
 BEGIN {
     use Dancer2;
     set views => "t/routes/views";
+    set log => 'info';
 
 set plugins => {
     'Auth::Extensible' => {
