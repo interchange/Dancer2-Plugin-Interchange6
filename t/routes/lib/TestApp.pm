@@ -6,7 +6,9 @@ use warnings;
 use Data::Dumper;
 
 BEGIN {
-use Dancer2;
+    use Dancer2;
+    set views => "t/routes/views";
+
 set plugins => {
     'Auth::Extensible' => {
         realms => {
