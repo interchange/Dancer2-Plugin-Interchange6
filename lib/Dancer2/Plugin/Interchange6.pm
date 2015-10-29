@@ -376,8 +376,7 @@ sub _shop_cart {
     # we have a cart name
     $args{name} = $_[0] if @_ == 1;
 
-    if ($user_ref == $plugin->logged_in_user) {
-
+    if ($user_ref = $plugin->logged_in_user) {
         # user is logged in
         $args{users_id} = $user_ref->users_id;
     }
