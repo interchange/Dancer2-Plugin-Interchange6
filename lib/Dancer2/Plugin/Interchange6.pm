@@ -237,6 +237,17 @@ has dbic => (
              },
 );
 
+has auth_extensible => (
+    is => 'ro',
+    lazy => 1,
+    default => sub {
+        # if the app already has the 'Auth::Extensible' plugin loaded, it'll return
+        # it. If not, it'll load it in the app, and then return it.
+        $_[0]->app->with_plugin( 'Auth::Extensible' )
+    },
+    handles => { 'logged_in_user' => 'logged_in_user' },
+);
+
 sub shop_schema {
     my $plugin = shift;
     $plugin->_shop_schema(@_);
