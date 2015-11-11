@@ -9,7 +9,7 @@ use Dancer2::Plugin2;
 use Dancer2::Plugin::DBIC;
 #use Dancer2::Plugin::Auth::Extensible;
 
-#use Dancer2::Plugin::Interchange6::Cart;
+use Dancer2::Plugin::Interchange6::Cart;
 #use Dancer2::Plugin::Interchange6::Business::OnlinePayment;
 
 =head1 NAME
@@ -199,16 +199,16 @@ functionality please copy/link to Dancer2 App/bin directory.
 
 =cut
 
-# register_hook(qw/before_cart_add_validate
-#                  before_cart_add after_cart_add
-#                  before_cart_update after_cart_update
-#                  before_cart_remove_validate
-#                  before_cart_remove after_cart_remove
-#                  before_cart_rename after_cart_rename
-#                  before_cart_clear after_cart_clear
-#                  before_cart_set_users_id after_cart_set_users_id
-#                  before_cart_set_sessions_id after_cart_set_sessions_id
-#                 /);
+plugin_hooks (qw/before_cart_add_validate
+                 before_cart_add after_cart_add
+                 before_cart_update after_cart_update
+                 before_cart_remove_validate
+                 before_cart_remove after_cart_remove
+                 before_cart_rename after_cart_rename
+                 before_cart_clear after_cart_clear
+                 before_cart_set_users_id after_cart_set_users_id
+                 before_cart_set_sessions_id after_cart_set_sessions_id
+                /);
 
 plugin_keywords qw/shop_schema
                    shop_resultset

@@ -134,7 +134,9 @@ has auth_extensible => (
         # it. If not, it'll load it in the app, and then return it.
         $_[0]->app->with_plugin( 'Auth::Extensible' )
     },
-    handles => { 'logged_in_user' => 'logged_in_user' },
+    handles => { 'logged_in_user' => 'logged_in_user',
+                 'authenticate_user' => 'authenticate_user',
+             },
 );
 
 has shop => (

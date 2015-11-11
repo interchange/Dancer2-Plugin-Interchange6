@@ -19,7 +19,7 @@ login and logout
 
 =cut
 
-#register_hook 'before_login_display';
+plugin_hooks qw'before_login_display';
 
 has auth_extensible => (
     is => 'ro',
@@ -29,7 +29,10 @@ has auth_extensible => (
         # it. If not, it'll load it in the app, and then return it.
         $_[0]->app->with_plugin( 'Auth::Extensible' )
     },
-    handles => { 'logged_in_user' => 'logged_in_user' },
+    handles => {
+        'logged_in_user' => 'logged_in_user',
+        'authenticate_user' => 'authenticate_user',
+    },
 );
 
 has shop => (
@@ -40,7 +43,8 @@ has shop => (
         # it. If not, it'll load it in the app, and then return it.
         $_[0]->app->with_plugin( 'Interchange6' )
     },
-    handles => { 'shop_cart' => 'shop_cart' },
+    handles => { 'shop_cart' => 'shop_cart',
+             'schema' => 'shop_schema'},
 );
 
 =head1 FUNCTIONS
@@ -74,12 +78,16 @@ sub account_routes {
 
         # call before_login_display route so template tokens
         # can be injected
-        execute_hook('before_login_display', \%values);
+#        $app->execute_hook(
+#            'plugin.interchange6_routes_account.before_login_display',
+#            \%values);
 
         # record return_url in the session to reuse it in post route
         $app->session->write( return_url => $values{return_url} );
 
-        template $routes_config->{account}->{login}->{template}, \%values;
+        return $app->template(
+            $routes_config->{account}->{login}->{template}, \%values
+        );
     };
 
     $routes{login}->{post} = sub {
@@ -97,9 +105,9 @@ sub account_routes {
 
         if ($user) {
             # remember current cart object
-            $current_cart = $app->shop_cart;
+            $current_cart = $plugin->shop->shop_cart;
 
-            ($success, $realm) = authenticate_user(
+            ($success, $realm) = $plugin->auth_extensible->authenticate_user(
                 $app->request->params->{username},
                 $app->request->params->{password}
             );

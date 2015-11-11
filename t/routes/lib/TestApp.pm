@@ -8,10 +8,12 @@ use Data::Dumper;
 BEGIN {
     use Dancer2;
     set views => "t/routes/views";
-    set log => 'info';
+#    set log => 'info';
 
 set plugins => {
     'Auth::Extensible' => {
+        no_login_handler => 1,
+        no_default_pages => 1,
         realms => {
             users => {
                 provider => 'DBIC',
@@ -30,6 +32,7 @@ set plugins => {
 use Interchange6::Schema;
 use Dancer2::Plugin::Interchange6;
 use Dancer2::Plugin::Interchange6::Routes;
+use Dancer2::Plugin::Interchange6::Routes::Account;
 use Dancer2::Plugin::Interchange6::Routes::Cart;
 use Dancer2::Plugin::Auth::Extensible;
 use Dancer2::Plugin::DBIC;
@@ -58,6 +61,8 @@ set plugins => {
 # we need to deploy our schema
 
 my $schema_class = 'Interchange6::Schema';
+
+warn "Deploying to $filename.";
 
 $schema =
   $schema_class->connect( "DBI:SQLite:$filename", '', '',

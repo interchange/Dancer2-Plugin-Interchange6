@@ -142,14 +142,14 @@ sub BUILD {
     $self->seed( \@products );
 
     # pull in hooks from Interchange6::Cart
-    hook 'after_cart_add'    => sub { $self->_after_cart_add(@_) };
-    hook 'after_cart_update' => sub { $self->_after_cart_update(@_) };
-    hook 'after_cart_remove' => sub { $self->_after_cart_remove(@_) };
-    hook 'after_cart_rename' => sub { $self->_after_cart_rename(@_) };
-    hook 'after_cart_clear'  => sub { $self->_after_cart_clear(@_) };
-    hook 'after_cart_set_users_id' =>
+    hook 'plugin.interchange6.after_cart_add'    => sub { $self->_after_cart_add(@_) };
+    hook 'plugin.interchange6.after_cart_update' => sub { $self->_after_cart_update(@_) };
+    hook 'plugin.interchange6.after_cart_remove' => sub { $self->_after_cart_remove(@_) };
+    hook 'plugin.interchange6.after_cart_rename' => sub { $self->_after_cart_rename(@_) };
+    hook 'plugin.interchange6.after_cart_clear'  => sub { $self->_after_cart_clear(@_) };
+    hook 'plugin.interchange6.after_cart_set_users_id' =>
       sub { $self->_after_cart_set_users_id(@_) };
-    hook 'after_cart_set_sessions_id' =>
+    hook 'plugin.interchange6.after_cart_set_sessions_id' =>
       sub { $self->_after_cart_set_sessions_id(@_) };
 }
 
