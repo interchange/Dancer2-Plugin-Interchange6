@@ -110,6 +110,7 @@ ok ($loc eq 'http://localhost/login?return_url=%2Fprivate',
     || diag "Redirect location: $loc.";
 
 $mech->get_ok( '/login', "GET /login" );
+$mech->content_like( qr/Login form/, 'Got login form' );
 
 # response_status_is $resp    => 200,            'status is ok';
 # response_content_like $resp => qr/Login form/, 'got login page';
@@ -123,7 +124,13 @@ my %form = (
     password => 'badpassword'
 );
 
-$mech->post_ok( '/login', { body => {%form}});
+$mech->submit_form_ok({form_number => 1,
+                       fields => \%form,
+                   },
+                      "Bad login");
+                          
+#$mech->post_ok( '/login', { body => {%form}});
+#$mech->content_like( qr/Login form/, "Test for login page");
 
 # "POST /login with bad password";
 
@@ -141,14 +148,14 @@ $mech->post_ok( '/login', { body => {%form}});
 #     "Check auth failed debug message"
 # ) || diag Dumper($logs);
 
-# # good login
+# good login
 
 # read_logs;    # clear logs
 
-# %form = (
-#     username => 'testuser',
-#     password => 'mypassword'
-# );
+%form = (
+    username => 'testuser',
+    password => 'mypassword'
+);
 
 # lives_ok { $resp = dancer_response( POST => '/login', { body => {%form} } ) }
 # "POST /login with good password";
