@@ -19,7 +19,7 @@ use Dancer2 qw(:syntax !before !after);
 use Dancer2::Plugin::DBIC;
 
 use Moo;
-use Interchange6::Types;
+use Types::Standard qw/Str/;
 extends 'Interchange6::Cart';
 
 use namespace::clean;
