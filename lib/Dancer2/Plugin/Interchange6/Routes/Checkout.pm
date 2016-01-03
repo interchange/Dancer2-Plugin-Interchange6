@@ -1,6 +1,6 @@
 package Dancer2::Plugin::Interchange6::Routes::Checkout;
 
-use Dancer2::Plugin2;
+use Dancer2::Plugin;
 use Dancer2::Plugin::Interchange6 ();
 
 =head1 NAME

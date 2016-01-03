@@ -3,7 +3,7 @@ package Dancer2::Plugin::Interchange6;
 use strict;
 use warnings;
 
-use Dancer2::Plugin2;
+use Dancer2::Plugin;
 
 #use Dancer2 qw(:syntax !before !after);
 use Dancer2::Plugin::DBIC;

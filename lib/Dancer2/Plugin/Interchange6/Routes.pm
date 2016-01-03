@@ -1,6 +1,6 @@
 package Dancer2::Plugin::Interchange6::Routes;
 
-use Dancer2::Plugin2;
+use Dancer2::Plugin;
 use Dancer2::Plugin::Interchange6;
 use Dancer2::Plugin::Interchange6::Routes::Account ();
 use Dancer2::Plugin::Interchange6::Routes::Cart;

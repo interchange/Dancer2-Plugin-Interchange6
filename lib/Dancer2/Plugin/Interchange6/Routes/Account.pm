@@ -4,7 +4,7 @@ use strict;
 use warnings;
 
 use Moo;
-use Dancer2::Plugin2;
+use Dancer2::Plugin;
 use Dancer2::Plugin::Interchange6;
 use Dancer2::Plugin::Auth::Extensible;
 
