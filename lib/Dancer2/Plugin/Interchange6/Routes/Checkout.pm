@@ -1,12 +1,12 @@
-package Dancer::Plugin::Interchange6::Routes::Checkout;
+package Dancer2::Plugin::Interchange6::Routes::Checkout;
 
-use Dancer ':syntax';
-use Dancer::Plugin;
-use Dancer::Plugin::Interchange6;
+use Dancer2 ':syntax';
+use Dancer2::Plugin;
+use Dancer2::Plugin::Interchange6;
 
 =head1 NAME
 
-Dancer::Plugin::Interchange6::Routes::Checkout - Checkout routes for Interchange6 Shop Machine
+Dancer2::Plugin::Interchange6::Routes::Checkout - Checkout routes for Interchange6 Shop Machine
 
 =cut
 

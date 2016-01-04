@@ -1,18 +1,18 @@
 package Test::Routes;
 
-# Dancer::Test uses some deep voodoo so please be very careful about changing
+# Dancer2::Test uses some deep voodoo so please be very careful about changing
 # the order of the setup parts of these tests. Note that some settings
 # have to be set in config.yml in order to make them work but others we
 # have to set within this script.
-# IMPORTANT: these tests cannot live directly under 't' since Dancer merrily
+# IMPORTANT: these tests cannot live directly under 't' since Dancer2 merrily
 # trashes appdir under certain circumstances when we live there.
 
 use Test::Most;
 
-use Dancer qw/config set/;
-use Dancer::Logger::Capture;
-use Dancer::Plugin::Interchange6;
-use Dancer::Plugin::Interchange6::Routes;
+use Dancer2 qw/config set/;
+use Dancer2::Logger::Capture;
+use Dancer2::Plugin::Interchange6;
+use Dancer2::Plugin::Interchange6::Routes;
 
 use namespace::clean;
 use Test::Roo::Role;
@@ -32,7 +32,7 @@ test 'route tests' => sub {
     set log    => 'debug';
     set logger => 'capture';
 
-    my $trap = Dancer::Logger::Capture->trap;
+    my $trap = Dancer2::Logger::Capture->trap;
 
     $mech->get_ok( '/ergo-roller', "GET /ergo-roller (product route via uri)" );
 

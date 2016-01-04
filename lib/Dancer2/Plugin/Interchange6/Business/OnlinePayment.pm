@@ -1,12 +1,12 @@
-package Dancer::Plugin::Interchange6::Business::OnlinePayment;
+package Dancer2::Plugin::Interchange6::Business::OnlinePayment;
 
 use Business::OnlinePayment 3.02;
-use Dancer ':syntax';
+use Dancer2 ':syntax';
 use Moo;
 
 =head1 NAME
 
-Dancer::Plugin::Interchange6::Business::OnlinePayment - Interchange6 wrapper for Business:OnlinePayment
+Dancer2::Plugin::Interchange6::Business::OnlinePayment - Interchange6 wrapper for Business:OnlinePayment
 
 =head1 CONFIGURATION
 

@@ -3,8 +3,8 @@ package Role::Deploy;
 use Test::Exception;
 use Test::More;
 
-use Dancer qw/set setting/;
-use Dancer::Plugin::Interchange6;
+use Dancer2 qw/set setting/;
+use Dancer2::Plugin::Interchange6;
 
 use namespace::clean;
 use Test::Roo::Role;

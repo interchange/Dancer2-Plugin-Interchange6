@@ -4,7 +4,7 @@ use Test::Exception;
 use Test::More;
 use Test::Roo::Role;
 
-use Dancer::Plugin::Interchange6;
+use Dancer2::Plugin::Interchange6;
 
 test 'misc shop tests' => sub {
     my $self = shift;

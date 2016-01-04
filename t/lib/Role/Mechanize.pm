@@ -2,7 +2,7 @@ package Role::Mechanize;
 
 use Moo::Role;
 
-use Dancer qw/:syntax/;
+use Dancer2 qw/:syntax/;
 use Test::WWW::Mechanize::PSGI;
 use Types::Standard qw/InstanceOf/;
 
@@ -16,8 +16,8 @@ has mech => (
             app => sub {
                 my $env = shift;
                 load_app 'TestApp',;
-                my $request = Dancer::Request->new( env => $env );
-                Dancer->dance( $request );
+                my $request = Dancer2::Request->new( env => $env );
+                Dancer2->dance( $request );
             }
         );
     },

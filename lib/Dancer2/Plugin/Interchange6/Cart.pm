@@ -1,10 +1,10 @@
 use utf8;
 
-package Dancer::Plugin::Interchange6::Cart;
+package Dancer2::Plugin::Interchange6::Cart;
 
 =head1 NAME
 
-Dancer::Plugin::Interchange6::Cart
+Dancer2::Plugin::Interchange6::Cart
 
 =head1 DESCRIPTION
 
@@ -15,10 +15,10 @@ Extends L<Interchange6::Cart> to tie cart to L<Interchange6::Schema::Result::Car
 use strict;
 use warnings;
 
-use Dancer qw(:syntax !before !after);
-use Dancer::Plugin;
-use Dancer::Plugin::Auth::Extensible;
-use Dancer::Plugin::DBIC;
+use Dancer2 qw(:syntax !before !after);
+use Dancer2::Plugin;
+use Dancer2::Plugin::Auth::Extensible;
+use Dancer2::Plugin::DBIC;
 use Scalar::Util 'blessed';
 use Try::Tiny;
 
@@ -37,7 +37,7 @@ inherited by this module.
 
 =head2 database
 
-The database name as defined in the L<Dancer::Plugin::DBIC> configuration.
+The database name as defined in the L<Dancer2::Plugin::DBIC> configuration.
 
 Attribute is required.
 

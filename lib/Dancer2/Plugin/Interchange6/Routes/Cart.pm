@@ -1,15 +1,15 @@
-package Dancer::Plugin::Interchange6::Routes::Cart;
+package Dancer2::Plugin::Interchange6::Routes::Cart;
 
 use Data::Dumper::Concise;
-use Dancer ':syntax';
-use Dancer::Plugin;
-use Dancer::Plugin::Interchange6;
-use Dancer::Plugin::Auth::Extensible;
+use Dancer2 ':syntax';
+use Dancer2::Plugin;
+use Dancer2::Plugin::Interchange6;
+use Dancer2::Plugin::Auth::Extensible;
 use Try::Tiny;
 
 =head1 NAME
 
-Dancer::Plugin::Interchange6::Routes::Cart - Cart routes for Interchange6 Shop Machine
+Dancer2::Plugin::Interchange6::Routes::Cart - Cart routes for Interchange6 Shop Machine
 
 =cut
 

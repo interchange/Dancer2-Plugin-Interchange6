@@ -2,9 +2,9 @@ package Test::Cart;
 
 use Test::Most;
 
-use Dancer qw/debug hook set setting var/;
-use Dancer::Logger::Capture;
-use Dancer::Plugin::Interchange6;
+use Dancer2 qw/debug hook set setting var/;
+use Dancer2::Logger::Capture;
+use Dancer2::Plugin::Interchange6;
 
 use namespace::clean;
 use Test::Roo::Role;
@@ -21,7 +21,7 @@ test 'cart tests' => sub {
     set log    => 'debug';
     set logger => 'capture';
 
-    my $trap   = Dancer::Logger::Capture->trap;
+    my $trap   = Dancer2::Logger::Capture->trap;
 
     # Get / set cart name
     $cart = cart;
