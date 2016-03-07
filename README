@@ -1,6 +1,6 @@
 NAME
 
-    Dancer::Plugin::Interchange6 - Interchange6 Shop Plugin for Dancer
+    Dancer2::Plugin::Interchange6 - Interchange6 Shop Plugin for Dancer2
 
 VERSION
 
@@ -8,8 +8,8 @@ VERSION
 
 REQUIREMENTS
 
-    All Interchange6 Dancer applications need to use the
-    Dancer::Session::DBIC engine.
+    All Interchange6 Dancer2 applications need to use the
+    Dancer2::Session::DBIC engine.
 
     The easiest way to configure this is in your main module, just after
     all the use statements:
@@ -30,16 +30,16 @@ CONFIGURATION
 
       If you wish to subclass the cart you can have "shop_cart" return your
       subclassed cart instead. You set the cart class via cart_class.
-      Defaults to Dancer::Plugin::Interchange6::Cart.
+      Defaults to Dancer2::Plugin::Interchange6::Cart.
 
       * carts_var_name
 
-      The plugin caches carts in a "var" in Dancer and the name of the var
+      The plugin caches carts in a "var" in Dancer2 and the name of the var
       used can be set via carts_var_name. Defaults to ic6_carts.
 
 ROUTES
 
-    You can use the Dancer::Plugin::Interchange6::Routes plugin bundled
+    You can use the Dancer2::Plugin::Interchange6::Routes plugin bundled
     with this plugin to setup standard routes for:
 
     product listing
@@ -55,9 +55,9 @@ ROUTES
 
         package MyShop;
     
-        use Dancer ':syntax';
-        use Dancer::Plugin::Interchange6;
-        use Dancer::Plugin::Interchange6::Routes;
+        use Dancer2 ':syntax';
+        use Dancer2::Plugin::Interchange6;
+        use Dancer2::Plugin::Interchange6::Routes;
     
         get '/shop' => sub {
             ...
@@ -69,14 +69,14 @@ ROUTES
     
         true;
 
-    Please refer to Dancer::Plugin::Interchange6::Routes for configuration
+    Please refer to Dancer2::Plugin::Interchange6::Routes for configuration
     options and further information.
 
 KEYWORDS
 
  shop_cart
 
-    Returns Dancer::Plugin::Interchange6::Cart object.
+    Returns Dancer2::Plugin::Interchange6::Cart object.
 
  shop_charge
 
@@ -203,13 +203,13 @@ HOOKS
 EXPIRE DBIC SESSIONS
 
     This command expires/manages DBIC sessions and carts. NOTE: For proper
-    functionality please copy/link to Dancer App/bin directory.
+    functionality please copy/link to Dancer2 App/bin directory.
 
         interchange6-expire-sessions
 
 ACKNOWLEDGEMENTS
 
-    The Dancer developers and community for their great application
+    The Dancer2 developers and community for their great application
     framework and for their quick and competent support.
 
     Peter Mottram for his patches.

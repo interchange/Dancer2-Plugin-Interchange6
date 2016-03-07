@@ -1,14 +1,13 @@
 bin/interchange6-expire-sessions
 CHANGES
-lib/Dancer/Plugin/Interchange6.pm
-lib/Dancer/Plugin/Interchange6/Business/OnlinePayment.pm
-lib/Dancer/Plugin/Interchange6/Cart.pm
-lib/Dancer/Plugin/Interchange6/Cart/DBIC.pm
-lib/Dancer/Plugin/Interchange6/Cart/Product.pm
-lib/Dancer/Plugin/Interchange6/Routes.pm
-lib/Dancer/Plugin/Interchange6/Routes/Account.pm
-lib/Dancer/Plugin/Interchange6/Routes/Cart.pm
-lib/Dancer/Plugin/Interchange6/Routes/Checkout.pm
+lib/Dancer2/Plugin/Interchange6.pm
+lib/Dancer2/Plugin/Interchange6/Business/OnlinePayment.pm
+lib/Dancer2/Plugin/Interchange6/Cart.pm
+lib/Dancer2/Plugin/Interchange6/Cart/Product.pm
+lib/Dancer2/Plugin/Interchange6/Routes.pm
+lib/Dancer2/Plugin/Interchange6/Routes/Account.pm
+lib/Dancer2/Plugin/Interchange6/Routes/Cart.pm
+lib/Dancer2/Plugin/Interchange6/Routes/Checkout.pm
 Makefile.PL
 MANIFEST			This list of files
 MANIFEST.SKIP
@@ -20,7 +19,7 @@ t/lib/Business/OnlinePayment/MockDie.pm
 t/lib/Business/OnlinePayment/MockFail.pm
 t/lib/Business/OnlinePayment/MockSuccess.pm
 t/lib/Business/OnlinePayment/MockPopup.pm
-t/lib/Dancer/Template/TemplateFlute.pm
+t/lib/Dancer2/Template/TemplateFlute.pm
 t/lib/Role/Deploy.pm
 t/lib/TestApp.pm
 t/lib/TestCart.pm

@@ -4,11 +4,11 @@ use strict;
 use warnings;
 
 use Data::Dumper;
-use Dancer ':syntax';
-use Dancer::Plugin::Interchange6;
-use Dancer::Plugin::Interchange6::Routes;
-use Dancer::Plugin::Auth::Extensible;
-use Dancer::Plugin::DBIC;
+use Dancer2 ':syntax';
+use Dancer2::Plugin::Interchange6;
+use Dancer2::Plugin::Interchange6::Routes;
+use Dancer2::Plugin::Auth::Extensible;
+use Dancer2::Plugin::DBIC;
 
 # ROUTES
 

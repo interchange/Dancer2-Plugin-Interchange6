@@ -2,7 +2,7 @@ package Test::Shop;
 
 use Test::Exception;
 use Test::More;
-use Dancer::Plugin::Interchange6;
+use Dancer2::Plugin::Interchange6;
 
 use Test::Roo::Role;
 

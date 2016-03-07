@@ -1,21 +1,20 @@
-package Dancer::Plugin::Interchange6;
+package Dancer2::Plugin::Interchange6;
 
 use strict;
 use warnings;
 
-use Dancer qw(:syntax !before !after);
-use Dancer::Plugin;
-use Dancer::Plugin::DBIC;
-use Dancer::Plugin::Auth::Extensible;
+use Dancer2::Plugin;
+use Dancer2::Plugin::DBIC;
+use Dancer2::Plugin::Auth::Extensible;
 
-use Dancer::Plugin::Interchange6::Cart;
-use Dancer::Plugin::Interchange6::Business::OnlinePayment;
+use Dancer2::Plugin::Interchange6::Cart;
+use Dancer2::Plugin::Interchange6::Business::OnlinePayment;
 
 use Module::Runtime 'use_module';
 
 =head1 NAME
 
-Dancer::Plugin::Interchange6 - Interchange6 Shop Plugin for Dancer
+Dancer2::Plugin::Interchange6 - Interchange6 Shop Plugin for Dancer2
 
 =head1 VERSION
 
@@ -27,7 +26,7 @@ our $VERSION = '0.120';
 
 =head1 REQUIREMENTS
 
-All Interchange6 Dancer applications need to use the L<Dancer::Session::DBIC>
+All Interchange6 Dancer2 applications need to use the L<Dancer2::Session::DBIC>
 engine.
 
 The easiest way to configure this is in your main module, just after all
@@ -51,18 +50,18 @@ Available configuration options:
 
 If you wish to subclass the cart you can have L</shop_cart> return your
 subclassed cart instead. You set the cart class via C<cart_class>.
-Defaults to L<Dancer::Plugin::Interchange6::Cart>.
+Defaults to L<Dancer2::Plugin::Interchange6::Cart>.
 
 =item * carts_var_name
 
-The plugin caches carts in a L<Dancer/var> and the name of the var used can
+The plugin caches carts in a L<Dancer2/var> and the name of the var used can
 be set via C<carts_var_name>. Defaults to C<ic6_carts>.
 
 =back
 
 =head1 ROUTES
 
-You can use the L<Dancer::Plugin::Interchange6::Routes> plugin bundled with this
+You can use the L<Dancer2::Plugin::Interchange6::Routes> plugin bundled with this
 plugin to setup standard routes for:
 
 =over 4
@@ -82,9 +81,9 @@ of your main module:
 
     package MyShop;
 
-    use Dancer ':syntax';
-    use Dancer::Plugin::Interchange6;
-    use Dancer::Plugin::Interchange6::Routes;
+    use Dancer2 ':syntax';
+    use Dancer2::Plugin::Interchange6;
+    use Dancer2::Plugin::Interchange6::Routes;
 
     get '/shop' => sub {
         ...
@@ -96,14 +95,14 @@ of your main module:
 
     true;
 
-Please refer to L<Dancer::Plugin::Interchange6::Routes> for configuration options
+Please refer to L<Dancer2::Plugin::Interchange6::Routes> for configuration options
 and further information.
 
 =head1 KEYWORDS
 
 =head2 shop_cart
 
-Returns L<Dancer::Plugin::Interchange6::Cart> object.
+Returns L<Dancer2::Plugin::Interchange6::Cart> object.
 
 
 =head2 shop_charge
@@ -251,7 +250,7 @@ Triggered after sessions_id is set for the cart.
 =head1 EXPIRE DBIC SESSIONS
 
 This command expires/manages DBIC sessions and carts.  NOTE: For proper
-functionality please copy/link to Dancer App/bin directory.
+functionality please copy/link to Dancer2 App/bin directory.
 
     interchange6-expire-sessions
 
@@ -349,7 +348,7 @@ register shop_charge => sub {
     my $payment_order = $schema->resultset('PaymentOrder')->create(\%payment_data);
 
     # create BOP object wrapper with provider settings
-	$bop_object = Dancer::Plugin::Interchange6::Business::OnlinePayment->new($provider, %$provider_settings);
+	$bop_object = Dancer2::Plugin::Interchange6::Business::OnlinePayment->new($provider, %$provider_settings);
 
     $bop_object->payment_order($payment_order);
 
@@ -389,7 +388,7 @@ sub _shop_cart {
 
     # cart class
     my $cart_class = plugin_setting->{cart_class}
-      || 'Dancer::Plugin::Interchange6::Cart';
+      || 'Dancer2::Plugin::Interchange6::Cart';
 
     my $carts = var($var) || {};
 
@@ -441,7 +440,7 @@ register_plugin;
 
 =head1 ACKNOWLEDGEMENTS
 
-The L<Dancer> developers and community for their great application framework
+The L<Dancer2> developers and community for their great application framework
 and for their quick and competent support.
 
 Peter Mottram for his patches.

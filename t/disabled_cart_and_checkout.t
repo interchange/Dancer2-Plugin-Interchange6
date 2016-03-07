@@ -2,9 +2,9 @@ use lib 't/lib';
 use Test::More import => ['!pass'];
 use Test::Exception;
 use Test::WWW::Mechanize::PSGI;
-use Dancer;
-use Dancer::Plugin::Interchange6;
-use Dancer::Plugin::Interchange6::Routes;
+use Dancer2;
+use Dancer2::Plugin::Interchange6;
+use Dancer2::Plugin::Interchange6::Routes;
 
 unless ( $ENV{RELEASE_TESTING} ) {
     plan( skip_all => "Author tests not required for installation" );
@@ -76,8 +76,8 @@ delete $settings->{'Interchange6::Routes'}->{navigation};
 my $app = sub {
     my $env = shift;
     shop_setup_routes;
-    my $request = Dancer::Request->new( env => $env );
-    Dancer->dance($request);
+    my $request = Dancer2::Request->new( env => $env );
+    Dancer2->dance($request);
 };
 
 my $mech = Test::WWW::Mechanize::PSGI->new( app => $app );
@@ -97,6 +97,8 @@ subtest "checkout route not defined" => sub {
 };
 
 subtest "navigation with undef records" => sub {
+
+    my $trap = Dancer2::Logger::Capture->trap;
 
     $trap->read;
     $mech->get('/hand-tools');

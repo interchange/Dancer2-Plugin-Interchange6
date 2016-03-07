@@ -2,7 +2,7 @@ package Test::DSL;
 
 use Test::Exception;
 use Test::More;
-use Dancer::Plugin::Interchange6;
+use Dancer2::Plugin::Interchange6;
 
 use Test::Roo::Role;
 
@@ -31,25 +31,25 @@ test 'shop_cart' => sub {
 
     lives_ok { $cart = shop_cart } "shop_cart lives";
 
-    isa_ok $cart, "Dancer::Plugin::Interchange6::Cart";
+    isa_ok $cart, "Dancer2::Plugin::Interchange6::Cart";
 
     cmp_ok $cart->name, 'eq', 'main', 'name is main';
 
     lives_ok { $cart = shop_cart('test') } "shop_cart('test') lives";
 
-    isa_ok $cart, "Dancer::Plugin::Interchange6::Cart";
+    isa_ok $cart, "Dancer2::Plugin::Interchange6::Cart";
 
     cmp_ok $cart->name, 'eq', 'test', 'name is test';
 
     lives_ok { $cart = cart } "cart lives";
 
-    isa_ok $cart, "Dancer::Plugin::Interchange6::Cart";
+    isa_ok $cart, "Dancer2::Plugin::Interchange6::Cart";
 
     cmp_ok $cart->name, 'eq', 'main', 'name is main';
 
     lives_ok { $cart = cart('test') } "cart('test') lives";
 
-    isa_ok $cart, "Dancer::Plugin::Interchange6::Cart";
+    isa_ok $cart, "Dancer2::Plugin::Interchange6::Cart";
 
     cmp_ok $cart->name, 'eq', 'test', 'name is test';
 };

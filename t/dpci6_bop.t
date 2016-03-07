@@ -5,19 +5,19 @@ use Test::More;
 use Test::Deep;
 use Test::Exception;
 
-use Dancer qw/set/;
-use Dancer::Plugin::Interchange6::Business::OnlinePayment;
+use Dancer2 qw/set/;
+use Dancer2::Plugin::Interchange6::Business::OnlinePayment;
 use lib 't/lib';
 
 set log    => 'debug';
 set logger => 'capture';
 
 my ( $bop, $log );
-my $trap = Dancer::Logger::Capture->trap;
+my $trap = Dancer2::Logger::Capture->trap;
 
 lives_ok {
     $bop =
-      Dancer::Plugin::Interchange6::Business::OnlinePayment->new( 'MockDie' );
+      Dancer2::Plugin::Interchange6::Business::OnlinePayment->new( 'MockDie' );
 }
 "create mock bop object with provider MockDie";
 
@@ -27,7 +27,7 @@ throws_ok {
 qr/Payment with provider MockDie failed/, "Payment with provider MockDie dies";
 
 lives_ok {
-    $bop = Dancer::Plugin::Interchange6::Business::OnlinePayment->new(
+    $bop = Dancer2::Plugin::Interchange6::Business::OnlinePayment->new(
         'MockFail',
         type      => 'CC',
         action    => 'Authorization Only'
@@ -55,7 +55,7 @@ cmp_deeply(
 
 lives_ok {
     $bop =
-      Dancer::Plugin::Interchange6::Business::OnlinePayment->new( 'MockSuccess')
+      Dancer2::Plugin::Interchange6::Business::OnlinePayment->new( 'MockSuccess')
 }
 "create mock bop object with provider MockSuccess";
 
@@ -83,7 +83,7 @@ cmp_deeply(
 
 lives_ok {
     $bop =
-      Dancer::Plugin::Interchange6::Business::OnlinePayment->new( 'MockPopup',
+      Dancer2::Plugin::Interchange6::Business::OnlinePayment->new( 'MockPopup',
         test_type => "success", server => "www.example.com" )
 }
 "create MockPopup bop object";

@@ -2,7 +2,7 @@ package Test::Routes;
 
 use Cwd;
 use File::Spec;
-use Dancer qw/:syntax !pass/;
+use Dancer2 qw/:syntax !pass/;
 use Test::More;
 use Test::Deep;
 use Test::Exception;

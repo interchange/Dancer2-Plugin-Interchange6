@@ -4,9 +4,9 @@ use Test::More;
 use Test::Deep;
 use Test::Exception;
 
-use Dancer qw/setting var/;
-use Dancer::Plugin::Interchange6;
-use Dancer::Plugin::Interchange6::Cart;
+use Dancer2 qw/setting var/;
+use Dancer2::Plugin::Interchange6;
+use Dancer2::Plugin::Interchange6::Cart;
 
 use Test::Roo::Role;
 
@@ -21,7 +21,7 @@ test 'cart unit tests' => sub {
 
     # new cart with no args
 
-    lives_ok { $cart = Dancer::Plugin::Interchange6::Cart->new }
+    lives_ok { $cart = Dancer2::Plugin::Interchange6::Cart->new }
     "new cart with no args lives";
 
     $log = $self->trap->read->[0];
@@ -37,7 +37,7 @@ test 'cart unit tests' => sub {
 
     # get same cart
 
-    lives_ok { $cart = Dancer::Plugin::Interchange6::Cart->new }
+    lives_ok { $cart = Dancer2::Plugin::Interchange6::Cart->new }
     "repeat new cart with no args lives";
 
     $log = $self->trap->read->[0];
@@ -52,7 +52,7 @@ test 'cart unit tests' => sub {
     # new cart with args
 
     lives_ok {
-        $cart = Dancer::Plugin::Interchange6::Cart->new(
+        $cart = Dancer2::Plugin::Interchange6::Cart->new(
             database => 'default',
             name     => 'new',
           )
@@ -72,7 +72,7 @@ test 'cart unit tests' => sub {
     # new cart with args as hashref
 
     lives_ok {
-        $cart = Dancer::Plugin::Interchange6::Cart->new(
+        $cart = Dancer2::Plugin::Interchange6::Cart->new(
             database => 'default',
             name     => 'hashref',
         );
@@ -92,7 +92,7 @@ test 'cart unit tests' => sub {
     # add a product to the cart so we can check that it gets reloaded
     # when cart->new is called next time
 
-    lives_ok { $cart = Dancer::Plugin::Interchange6::Cart->new }
+    lives_ok { $cart = Dancer2::Plugin::Interchange6::Cart->new }
     "get default cart";
 
     cmp_ok $schema->resultset('CartProduct')->count, '==', 0,
@@ -109,7 +109,7 @@ test 'cart unit tests' => sub {
 
     cmp_ok $cart->count, '==', 1, "cart count is 1";
 
-    lives_ok { $cart = Dancer::Plugin::Interchange6::Cart->new }
+    lives_ok { $cart = Dancer2::Plugin::Interchange6::Cart->new }
     "refetch the cart";
 
     cmp_ok $cart->count, '==', 1, "cart count is 1";

@@ -15,7 +15,7 @@ use Test::Exception;
 use Test::More;
 use Test::WWW::Mechanize::PSGI;
 
-use Dancer qw/load_app set setting/;
+use Dancer2 qw/load_app set setting/;
 
 use Test::Roo::Role;
 
@@ -34,8 +34,8 @@ has mech => (
             app => sub {
                 my $env = shift;
                 load_app 'TestApp';
-                my $request = Dancer::Request->new( env => $env );
-                Dancer->dance($request);
+                my $request = Dancer2::Request->new( env => $env );
+                Dancer2->dance($request);
             }
         );
     },
@@ -43,14 +43,14 @@ has mech => (
 
 =head2 trap
 
-defaults to C<< Dancer::Logger::Capture->trap >>
+defaults to C<< Dancer2::Logger::Capture->trap >>
 
 =cut
 
 has trap => (
     is => 'ro',
     default =>
-      sub { require Dancer::Logger::Capture; Dancer::Logger::Capture->trap },
+      sub { require Dancer2::Logger::Capture; Dancer2::Logger::Capture->trap },
 );
 
 test 'deploy tests' => sub {
