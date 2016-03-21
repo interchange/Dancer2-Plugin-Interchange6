@@ -1,10 +1,10 @@
 use utf8;
 
-package Dancer::Plugin::Interchange6::Cart::Product;
+package Dancer2::Plugin::Interchange6::Cart::Product;
 
 =head1 NAME
 
-Dancer::Plugin::Interchange6::Cart::Product
+Dancer2::Plugin::Interchange6::Cart::Product
 
 =head1 DESCRIPTION
 
