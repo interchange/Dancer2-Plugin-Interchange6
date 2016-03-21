@@ -25,9 +25,8 @@ Returns the account routes based on the passed routes configuration.
 =cut
 
 sub account_routes {
-    my ( $plugin, $routes_config ) = @_;
+    my $routes_config = shift;
     my %routes;
-    my $app = $plugin->app;
 
     $routes{login}->{get} = sub {
         my $app   = shift;

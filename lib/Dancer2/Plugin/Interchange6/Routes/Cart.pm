@@ -1,8 +1,5 @@
 package Dancer2::Plugin::Interchange6::Routes::Cart;
 
-use Dancer2::Plugin;
-use Dancer2::Plugin::Interchange6;
-use Dancer2::Plugin::Auth::Extensible;
 use Try::Tiny;
 
 =head1 NAME
@@ -10,8 +7,6 @@ use Try::Tiny;
 Dancer2::Plugin::Interchange6::Routes::Cart - Cart routes for Interchange6 Shop Machine
 
 =cut
-
-register_hook 'before_cart_display';
 
 =head1 FUNCTIONS
 
@@ -25,48 +20,54 @@ sub cart_route {
     my $routes_config = shift;
 
     return sub {
+        my $app = shift;
+        my $d2pic6 = $app->with_plugin('Dancer2::Plugin::Interchange6');
+
         my %values;
         my ($input, $product, $cart, $cart_name, $cart_input,
             $cart_product, $roles, @errors);
 
-        $cart_name = param('cart');
-        $cart = $cart_name ? cart($cart_name) : cart;
+        $cart_name = $app->request->param('cart');
+        $cart = $cart_name ? $d2pic6->cart($cart_name) : $d2pic6->cart;
 
-        debug "cart_route cart name: " . $cart->name;
+        $app->log( "debug", "cart_route cart name: ", $cart->name );
 
-        if ( param('remove') ) {
+        if ( $app->request->param('remove') ) {
 
             # removing item from cart
 
             try {
-                $cart->remove( param('remove') );
+                $cart->remove( $app->request->param('remove') );
                 # if GET then URL now contains ugly query params so redirect
-                return redirect '/cart' if request->is_get;
+                return $app->redirect('/cart') if $app->request->is_get);
             }
             catch {
-                warning "Cart remove error: $_";
+                $app->log( "warning", "Cart remove error: $_" );
                 push @errors, "Failed to remove product from cart: $_";
             };
         }
-        elsif ( param('update') && defined param('quantity') ) {
+        elsif ( $app->request->param('update') && defined $app->request->param('quantity') ) {
 
             # update existing cart product
 
-            debug "Update "
-              . param('update')
-              . " with quantity "
-              . param('quantity');
+            $app->log(
+                "debug", "Update ",
+                $app->request->param('update'),
+                " with quantity ",
+                $app->request->param('quantity')
+            );
 
             try {
-                $cart->update( param('update') => param('quantity') );
+                $cart->update( $app->request->param('update') =>
+                      $app->request->param('quantity') );
             }
             catch {
-                warning "Update cart product error: $_";
+                $app->log( "warning", "Update cart product error: $_" );
                 push @errors, "Failed to update product in cart: $_";
             };
         }
 
-        if ( $input = param('sku') ) {
+        if ( $input = $app->request->param('sku') ) {
 
             # add new product
 
@@ -75,17 +76,17 @@ sub cart_route {
 
             if ( ref($input) eq '' ) {
 
-                $product = shop_product($input);
+                $product = $d2pic6->shop_product($input);
 
                 unless ( defined $product ) {
-                    warning "sku not found in POST /cart: $input";
-                    session shop_cart_error =>
-                      { message => "Product not found with sku: $input" };
-                    return redirect '/';
+                    $app->log("warning", "sku not found in POST /cart: $input");
+                    $app->session->write( shop_cart_error =>
+                          { message => "Product not found with sku: $input" } );
+                    return $app->redirect('/');
                 }
 
                 # store params in hash
-                my %params = params;
+                my %params = %{ $app->request->params };
 
                 if ( defined $product->canonical_sku ) {
 
@@ -126,19 +127,27 @@ sub cart_route {
                         $user_input{$name} = $params{$name};
                     }
 
-                    debug "Attributes for $input: ", $attr_ref,
-                      ", user input: ", \%user_input;
+                    $app->log(
+                        "debug", "Attributes for $input: ",
+                        $attr_ref, ", user input: ",
+                        \%user_input
+                    );
                     my %match_info;
 
                     unless ( $cart_product =
                         $product->find_variant( \%user_input, \%match_info ) )
                     {
-                        warning "Variant not found for ", $product->sku;
-                        session shop_cart_error => {
-                            message => 'Variant not found.',
-                            info    => \%match_info
-                        };
-                        return redirect $product->uri;
+                        $app->log( "warning", "Variant not found for ",
+                            $product->sku );
+
+                        $app->session->write(
+                            shop_cart_error => {
+                                message => 'Variant not found.',
+                                info    => \%match_info
+                            }
+                        );
+
+                        return $app->redirect( $product->uri );
                     }
                 }
                 else {
@@ -147,8 +156,8 @@ sub cart_route {
                 }
 
                 my $quantity = 1;
-                if ( param('quantity') ) {
-                    $quantity = param('quantity');
+                if ( $app->request->param('quantity') ) {
+                    $quantity = $app->request->param('quantity');
                 }
 
                 try {
@@ -161,7 +170,7 @@ sub cart_route {
                     );
                 }
                 catch {
-                    warning "Cart add error: $_";
+                    $app->log( "warning", "Cart add error: $_" );
                     push @errors, "Failed to add product to cart: $_";
                 };
             }
@@ -175,9 +184,9 @@ sub cart_route {
 
         # call before_cart_display route so template tokens
         # can be injected
-        execute_hook('before_cart_display', \%values);
+        $app->execute_hook('plugin.interchange6.before_cart_display', \%values);
 
-        template $routes_config->{cart}->{template}, \%values;
+        $app->template( $routes_config->{cart}->{template}, \%values );
     }
 }
 
