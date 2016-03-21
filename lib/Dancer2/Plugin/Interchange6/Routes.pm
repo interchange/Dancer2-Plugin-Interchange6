@@ -1,12 +1,9 @@
 package Dancer2::Plugin::Interchange6::Routes;
 
-use Dancer2 ':syntax';
 use Dancer2::Plugin;
-use Dancer2::Plugin::Interchange6;
 use Dancer2::Plugin::Interchange6::Routes::Account;
 use Dancer2::Plugin::Interchange6::Routes::Cart;
 use Dancer2::Plugin::Interchange6::Routes::Checkout;
-use Dancer2::Plugin::Auth::Extensible;
 
 =head1 NAME
 
@@ -193,17 +190,10 @@ to L<Dancer2::Plugin::Auth::Extensible/logged_in_user> or C<undef>.
 
 =cut
 
-hook before => sub {
-    shop_schema->set_current_user( logged_in_user || undef );
-};
+plugin_keywords 'shop_setup_routes';
 
-register shop_setup_routes => sub {
-    _setup_routes();
-};
-
-register_hook (qw/before_product_display before_navigation_search
+plugin_hooks (qw/before_product_display before_navigation_search
     before_navigation_display/);
-register_plugin;
 
 our $object_autodetect = 0;
 
@@ -230,9 +220,41 @@ our %route_defaults = (
     product => {template => 'product'},
 );
 
-sub _setup_routes {
+has plugin_auth_extensible => (
+    is      => 'ro',
+    lazy    => 1,
+    default => sub {
+        $_[0]->app->with_plugin('Dancer2::Plugin::Auth::Extensible');
+    },
+    handles => [ 'logged_in_user', ],
+);
+
+has plugin_interchange6 => (
+    is      => 'ro',
+    lazy    => 1,
+    default => sub {
+        $_[0]->app->with_plugin('Dancer2::Plugin::Interchange6');
+    },
+    handles =>
+      [ 'shop_navigation', 'shop_product', 'shop_redirect', 'shop_schema', ],
+);
+
+sub shop_setup_routes {
+    my $plugin = shift;
+    my $app    = $plugin->app;
+
     my $sub;
-    my $plugin_config = plugin_setting;
+    my $plugin_config = $plugin->config;
+
+    $app->add_hook(
+        Dancer2::Core::Hook->new(
+            name => 'before',
+            code => sub {
+                $plugin->shop_schema->set_current_user( $plugin->logged_in_user
+                      || undef );
+            },
+        )
+    );
 
     # update settings with defaults
     my $routes_config = _config_routes($plugin_config, \%route_defaults);
@@ -241,159 +263,205 @@ sub _setup_routes {
     _config_warnings($routes_config);
 
     # check whether template engine has object autodetect
-    if (config->{template} eq 'template_flute') {
+    if ($app->config->{template} eq 'template_flute') {
         $object_autodetect = 1;
     }
 
     # account routes
     my $account_routes = Dancer2::Plugin::Interchange6::Routes::Account::account_routes($routes_config);
 
-    get '/' . $routes_config->{account}->{login}->{uri}
-        => $account_routes->{login}->{get};
+    $app->add_route(
+        method => 'get',
+        regexp => '/' . $routes_config->{account}->{login}->{uri},
+        code   => $account_routes->{login}->{get},
+    );
 
-    post '/' . $routes_config->{account}->{login}->{uri}
-        => $account_routes->{login}->{post};
+    $app->ad_route(
+        method => 'post',
+        regexp => '/' . $routes_config->{account}->{login}->{uri},
+        code   => $account_routes->{login}->{post},
+    );
 
-    any ['get', 'post'] => '/' . $routes_config->{account}->{logout}->{uri}
-        => $account_routes->{logout}->{any};
-
-    if ($routes_config->{cart}->{active}) {
-        # routes for cart
-        my $cart_sub = Dancer2::Plugin::Interchange6::Routes::Cart::cart_route($routes_config);
-        get '/' . $routes_config->{cart}->{uri} => $cart_sub;
-        post '/' . $routes_config->{cart}->{uri} => $cart_sub;
+    foreach my $method ( 'get', 'post' ) {
+        $app->add_route(
+            method => $method,
+            regexp => '/' . $routes_config->{account}->{logout}->{uri},
+            code   => $account_routes->{logout}->{any},
+        );
     }
 
-    if ($routes_config->{checkout}->{active}) {
+    if ( $routes_config->{cart}->{active} ) {
+
+        # routes for cart
+        my $cart_sub = Dancer2::Plugin::Interchange6::Routes::Cart::cart_route(
+            $routes_config);
+
+        foreach my $method ( 'get', 'post' ) {
+            $app->add_route(
+                method => $method,
+                regexp => '/' . $routes_config->{cart}->{uri},
+                code   => $cart_sub,
+            );
+        }
+    }
+
+    if ( $routes_config->{checkout}->{active} ) {
+
         # routes for checkout
-        my $checkout_sub = Dancer2::Plugin::Interchange6::Routes::Checkout::checkout_route($routes_config);
-        get '/' . $routes_config->{checkout}->{uri} => $checkout_sub;
-        post '/' . $routes_config->{checkout}->{uri} => $checkout_sub;
+        my $checkout_sub =
+          Dancer2::Plugin::Interchange6::Routes::Checkout::checkout_route(
+            $routes_config);
+
+        foreach my $method ( 'get', 'post' ) {
+            $app->add_route(
+                method => $method,
+                regexp => '/' . $routes_config->{checkout}->{uri},
+                code   => $checkout_sub,
+            );
+        }
     }
 
     # fallback route for flypage and navigation
-    get qr{/(?<path>.+)} => sub {
-        my $path = captures->{'path'};
+    $app->add_route(
+        method => 'get',
+        regexp => qr{/(?<path>.+)},
+        code   => sub {
+            my $path = $app->request->captures->{'path'};
 
-        # check for a matching product by uri
-        my $product = shop_product->single( { uri => $path, active => 1 } );
+            # check for a matching product by uri
+            my $product =
+              $plugin->shop_product->single( { uri => $path, active => 1 } );
 
-        if (!$product) {
+            if ( !$product ) {
 
-            # check for a matching product by sku
-            $product = shop_product->single( { sku => $path, active => 1 } );
+                # check for a matching product by sku
+                $product = $plugin->shop_product->single(
+                    { sku => $path, active => 1 } );
 
-            if ( $product && $product->uri ) {
+                if ( $product && $product->uri ) {
 
-                # permanent redirect to specific URL
-                debug "Redirecting permanently to product uri ",
-                  $product->uri,
-                  " for $path.";
-                return redirect( uri_for( $product->uri ), 301 );
-            }
-        }
+                    # permanent redirect to specific URL
+                    $app->log( "debug",
+                        "Redirecting permanently to product uri ",
+                        $product->uri, " for $path." );
 
-        if ($product) {
-
-            # flypage
-            my $tokens = { product => $product };
-
-            execute_hook( 'before_product_display', $tokens );
-
-            my $output = template $routes_config->{product}->{template},
-              $tokens;
-
-            # temporary way to erase cart errors from missing variants
-            session shop_cart_error => undef;
-
-            return $output;
-        }
-
-        # check for page number
-        my $page;
-
-        if ($path =~ s%/([1-9][0-9]*)$%%) {
-            $page = $1;
-        }
-        else {
-            $page = 1;
-        }
-
-        # first check for navigation item
-        my $nav = shop_navigation->single( { uri => $path, active => 1 } );
-
-        if (defined $nav) {
-
-            # navigation item found
-
-            # retrieve navigation attribute for template
-            my $template = $routes_config->{navigation}->{template};
-
-            if ( my $attr_value = $nav->find_attribute_value('template') ) {
-                debug "Change template name from $template to $attr_value due to navigation attribute.";
-                $template = $attr_value;
+                    return $app->redirect(
+                        $app->request->uri_for( $product->uri ), 301 );
+                }
             }
 
-            my $tokens = {
-                navigation => $nav,
-                page       => $page,
-                template   => $template
-            };
+            if ($product) {
 
-            execute_hook('before_navigation_search', $tokens);
+                # flypage
+                my $tokens = { product => $product };
 
-            # Find product listing for this nav for active products only.
-            # In order_by me refers to navigation_products.
+                $plugin->execute_plugin_hook( 'before_product_display',
+                    $tokens );
 
-            my $products =
-              $tokens->{navigation}
-              ->navigation_products
-              ->search_related('product')
-              ->active
-              ->listing
-              ->order_by('!me.priority,!product.priority');
+                my $output =
+                  $app->template( $routes_config->{product}->{template},
+                    $tokens );
 
-            if ( defined $routes_config->{navigation}->{records} ) {
+                # temporary way to erase cart errors from missing variants
+                $app->session->write( shop_cart_error => undef );
 
-                # records per page is set in configuration so page the
-                # result set
-
-                $products =
-                  $products->rows( $routes_config->{navigation}->{records} )
-                  ->page( $tokens->{page} );
+                return $output;
             }
 
-            # get a pager
+            # check for page number
+            my $page;
 
-            $tokens->{pager} = $products->pager;
-
-            # can template autodetect objects?
-
-            if (!$object_autodetect) {
-                $products = [$products->all];
+            if ( $path =~ s%/([1-9][0-9]*)$%% ) {
+                $page = $1;
+            }
+            else {
+                $page = 1;
             }
 
-            $tokens->{products} = $products;
+            # first check for navigation item
+            my $nav =
+              $plugin->shop_navigation->single( { uri => $path, active => 1 } );
 
-            execute_hook('before_navigation_display', $tokens);
+            if ( defined $nav ) {
 
-            return template $tokens->{template}, $tokens;
-        }
+                # navigation item found
 
-        # check for uri redirect record
-        my ( $redirect, $status_code ) = shop_redirect($path);
+                # retrieve navigation attribute for template
+                my $template = $routes_config->{navigation}->{template};
 
-        if ($redirect) {
-            # redirect to specific URL
-            debug "UriRedirect record found redirecting uri $redirect"
-              . " to $path with status code $status_code";
-            return redirect( uri_for($redirect), $status_code );
-        }
+                if ( my $attr_value = $nav->find_attribute_value('template') ) {
+                    $app->log(
+                        "debug",
+                        "Change template name from $template".
+                        " to $attr_value due to navigation attribute."
+                    );
+                    $template = $attr_value;
+                }
 
-        # display not_found page
-        status 'not_found';
-        forward 404;
-    };
+                my $tokens = {
+                    navigation => $nav,
+                    page       => $page,
+                    template   => $template
+                };
+
+                $plugin->execute_plugin_hook( 'before_navigation_search',
+                    $tokens );
+
+                # Find product listing for this nav for active products only.
+                # In order_by me refers to navigation_products.
+
+                my $products =
+                  $tokens->{navigation}
+                  ->navigation_products->search_related('product')
+                  ->active->listing->order_by('!me.priority,!product.priority');
+
+                if ( defined $routes_config->{navigation}->{records} ) {
+
+                    # records per page is set in configuration so page the
+                    # result set
+
+                    $products =
+                      $products->rows( $routes_config->{navigation}->{records} )
+                      ->page( $tokens->{page} );
+                }
+
+                # get a pager
+
+                $tokens->{pager} = $products->pager;
+
+                # can template autodetect objects?
+
+                if ( !$object_autodetect ) {
+                    $products = [ $products->all ];
+                }
+
+                $tokens->{products} = $products;
+
+                $plugin->execute_plugin_hook( 'before_navigation_display',
+                    $tokens );
+
+                return $app->template( $tokens->{template}, $tokens );
+            }
+
+            # check for uri redirect record
+            my ( $redirect, $status_code ) = $plugin->shop_redirect($path);
+
+            if ($redirect) {
+
+                # redirect to specific URL
+                $app->log( "debug",
+                        "UriRedirect record found redirecting uri"
+                      . " $redirect to $path with status code $status_code" );
+
+                return $app->redirect( $app->request->uri_for($redirect),
+                    $status_code );
+            }
+
+            # display not_found page
+            $app->response->status( 'not_found' );
+            $app->forward(404);
+        },
+    );
 }
 
 sub _config_routes {
@@ -421,7 +489,7 @@ sub _config_warnings {
     my ($settings) = @_;
 
     if ($settings->{navigation}->{records} == 0) {
-        warning __PACKAGE__, ": Maximum number of navigation records is zero.\n";
+        warn __PACKAGE__, ": Maximum number of navigation records is zero.\n";
     }
 }
 
