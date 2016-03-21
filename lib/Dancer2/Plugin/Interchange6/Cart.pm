@@ -15,21 +15,6 @@ Extends L<Interchange6::Cart> to tie cart to L<Interchange6::Schema::Result::Car
 use strict;
 use warnings;
 
-<<<<<<< HEAD:lib/Dancer/Plugin/Interchange6/Cart.pm
-use Dancer qw(:syntax !before !after);
-use Dancer::Plugin;
-use Dancer::Plugin::Auth::Extensible;
-use Dancer::Plugin::DBIC;
-use Module::Runtime 'use_module';
-=======
-use Dancer2 qw(:syntax !before !after);
-use Dancer2::Plugin;
-use Dancer2::Plugin::Auth::Extensible;
-use Dancer2::Plugin::DBIC;
->>>>>>> rename Dancer to Dancer2 everywhere - MASSIVE breakage:lib/Dancer2/Plugin/Interchange6/Cart.pm
-use Scalar::Util 'blessed';
-use Try::Tiny;
-
 use Moo;
 use MooseX::CoverableModifiers;
 use Interchange6::Types -types;
@@ -69,7 +54,7 @@ has dbic_cart => (
 sub _build_dbic_cart {
     my $self = shift;
 
-    my $cart = schema( $self->database )->resultset('Cart')->find_or_new(
+    my $cart = $self->schema->resultset('Cart')->find_or_new(
         {
             name        => $self->name,
             sessions_id => $self->sessions_id,
@@ -105,6 +90,20 @@ sub _build_dbic_cart_products {
             prefetch => 'product'
         }
     );
+}
+
+=head2 schema
+
+DBIC schema for L</database>.
+
+=cut
+
+has schema => (
+    is => 'lazy',
+);
+
+sub _build_schema {
+    return shift->dbic_cart->result_source->schema($self->database);
 }
 
 =head2 id
@@ -166,10 +165,6 @@ sub BUILD {
 
     my $rset = $self->dbic_cart_products->order_by( 'cart_position',
         'cart_products_id' );
-
-    if (logged_in_user) {
-        $roles = user_roles;
-    }
 
     while ( my $record = $rset->next ) {
 
@@ -234,8 +229,7 @@ around 'add' => sub {
         die "Attempt to add product to cart without sku failed."
           unless defined $arg->{sku};
 
-        my $result =
-          schema( $self->database )->resultset('Product')->find( $arg->{sku} );
+        my $result = $self->schema->resultset('Product')->find( $arg->{sku} );
 
         die "Product with sku '$arg->{sku}' does not exist."
           unless defined $result;
@@ -326,7 +320,7 @@ sub load_saved_products {
     # find old carts and see if they have products we should move into
     # our new cart
 
-    my $old_carts = schema( $self->database )->resultset('Cart')->search(
+    my $old_carts = $self->schema->resultset('Cart')->search(
         {
             'me.name'        => $self->name,
             'me.users_id'    => $self->users_id,
