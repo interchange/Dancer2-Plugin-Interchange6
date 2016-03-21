@@ -4,12 +4,7 @@ use strict;
 use warnings;
 
 use Dancer2::Plugin;
-use Dancer2::Plugin::DBIC;
-use Dancer2::Plugin::Auth::Extensible;
-
-use Dancer2::Plugin::Interchange6::Cart;
 use Dancer2::Plugin::Interchange6::Business::OnlinePayment;
-
 use Module::Runtime 'use_module';
 
 =head1 NAME
@@ -256,7 +251,27 @@ functionality please copy/link to Dancer2 App/bin directory.
 
 =cut
 
-register_hook(qw/before_cart_add_validate
+has plugin_auth_extensible => (
+    is      => 'ro',
+    is      => 'lazy',
+    default => sub {
+        $_[0]->app->with_plugin('Dancer2::Plugin::Auth::Extensible');
+    },
+    handles  => ['logged_in_user'],
+    init_arg => undef,
+);
+
+has plugin_dbic => (
+    is      => 'ro',
+    is      => 'lazy',
+    default => sub {
+        $_[0]->app->with_plugin('Dancer2::Plugin::DBIC');
+    },
+    handles  => [ 'resultset', 'schema' ],
+    init_arg => undef,
+);
+
+plugin_hooks (qw/before_cart_add_validate
                  before_cart_add after_cart_add
                  before_cart_update after_cart_update
                  before_cart_remove_validate
@@ -267,55 +282,53 @@ register_hook(qw/before_cart_add_validate
                  before_cart_set_sessions_id after_cart_set_sessions_id
                 /);
 
-register shop_schema => sub {
-    _shop_schema(@_);
-};
+plugin_keywords [ 'shop_cart', 'cart' ], 'shop_charge', 'shop_schema',
 
-register shop_address => sub {
-    _shop_resultset('Address', @_);
-};
+  shop_address => sub {
+    _shop_resultset( shift, 'Address', @_ );
+  },
 
-register shop_attribute => sub {
-    _shop_resultset('Attribute', @_);
-};
+  shop_attribute => sub {
+    _shop_resultset( shift, 'Attribute', @_ );
+  },
 
-register shop_country => sub {
-    _shop_resultset('Country', @_);
-};
+  shop_country => sub {
+    _shop_resultset( shift, 'Country', @_ );
+  },
 
-register shop_message => sub {
-    _shop_resultset('Message', @_);
-};
+  shop_message => sub {
+    _shop_resultset( shift, 'Message', @_ );
+  },
 
-register shop_navigation => sub {
-    _shop_resultset('Navigation', @_);
-};
+  shop_navigation => sub {
+    _shop_resultset( shift, 'Navigation', @_ );
+  },
 
-register shop_order => sub {
-    _shop_resultset('Order', @_);
-};
+  shop_order => sub {
+    _shop_resultset( shift, 'Order', @_ );
+  },
 
-register shop_product => sub {
-    _shop_resultset('Product', @_);
-};
+  shop_product => sub {
+    _shop_resultset( shift, 'Product', @_ );
+  },
 
-register shop_state => sub {
-    _shop_resultset('State', @_);
-};
+  shop_redirect => sub {
+    return resultset('UriRedirect')->redirect( $_[1] );
+  },
 
-register shop_redirect => sub {
-    return resultset('UriRedirect')->redirect($_[0]);
-};
+  shop_state => sub {
+    _shop_resultset( shift, 'State', @_ );
+  },
 
-register shop_user => sub {
-    _shop_resultset('User', @_);
-};
+  shop_user => sub {
+    _shop_resultset( shift, 'User', @_ );
+  };
 
-register shop_charge => sub {
-	my (%args) = @_;
+sub shop_charge {
+    my ( $plugin, %args ) = @_;
 	my ($schema, $bop_object, $payment_settings, $provider, $provider_settings);
 
-	$payment_settings = plugin_setting->{payment};
+	$payment_settings = $plugin->config->{payment};
 
     die "No payment setting" unless $payment_settings;
 
@@ -343,7 +356,7 @@ register shop_charge => sub {
                         );
 
     # create payment order
-    $schema = _shop_schema();
+    $schema = $plugin->shop_schema;
 
     my $payment_order = $schema->resultset('PaymentOrder')->create(\%payment_data);
 
@@ -372,10 +385,8 @@ register shop_charge => sub {
 	return $bop_object;
 };
 
-register cart => \&_shop_cart;
-register shop_cart => \&_shop_cart;
-
-sub _shop_cart {
+sub shop_cart {
+    my $plugin = shift;
 
     my ( %args, $user_ref );
 
@@ -383,22 +394,22 @@ sub _shop_cart {
     $args{name} = @_ == 1 ? $_[0] : 'main';
 
     # set name of var we will stash carts in
-	my $var = plugin_setting->{carts_var_name} || 'ic6_carts';
-    debug "carts_var_name: $var";
+	my $var = $plugin->config->{carts_var_name} || 'ic6_carts';
+    $plugin->app->log("debug", "carts_var_name: $var");
 
     # cart class
-    my $cart_class = plugin_setting->{cart_class}
+    my $cart_class = $plugin->config->{cart_class}
       || 'Dancer2::Plugin::Interchange6::Cart';
 
-    my $carts = var($var) || {};
+    my $carts = $plugin->app->request->var($var) || {};
 
     if ( !defined $carts->{ $args{name} } ) {
 
         # can't find this cart in stash
 
-        $args{sessions_id} = session->id;
+        $args{sessions_id} = $plugin->app->session->read('id');
 
-        if ( $user_ref = logged_in_user ) {
+        if ( $user_ref = $plugin->logged_in_user ) {
 
             # user is logged in
             $args{users_id} = $user_ref->users_id;
@@ -408,12 +419,13 @@ sub _shop_cart {
     }
 
     # stash carts back in var
-    var $var => $carts;
+    $plugin->app->request->var( $var => $carts );
 
     return $carts->{ $args{name} };
 }
 
-sub _shop_schema {
+sub shop_schema {
+    my $plugin = shift;
     my $schema_key;
 
     if (@_) {
@@ -423,20 +435,19 @@ sub _shop_schema {
         $schema_key = 'default';
     }
 
-    return schema($schema_key);
+    return $plugin->schema($schema_key);
 };
 
 sub _shop_resultset {
+    my $plugin = shift;
     my ($name, $key) = @_;
 
     if (defined $key) {
-        return resultset($name)->find($key);
+        return $plugin->resultset($name)->find($key);
     }
 
-    return resultset($name);
+    return $plugin->resultset($name);
 };
-
-register_plugin;
 
 =head1 ACKNOWLEDGEMENTS
 
