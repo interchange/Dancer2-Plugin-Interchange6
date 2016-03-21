@@ -3,7 +3,6 @@ package Dancer2::Plugin::Interchange6::Routes::Account;
 use strict;
 use warnings;
 
-use Dancer2 ':syntax';
 use Dancer2::Plugin;
 use Dancer2::Plugin::Interchange6;
 use Dancer2::Plugin::Auth::Extensible;

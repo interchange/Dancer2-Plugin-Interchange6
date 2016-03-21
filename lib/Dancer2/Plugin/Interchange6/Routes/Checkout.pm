@@ -1,6 +1,5 @@
 package Dancer2::Plugin::Interchange6::Routes::Checkout;
 
-use Dancer2 ':syntax';
 use Dancer2::Plugin;
 use Dancer2::Plugin::Interchange6;
 
