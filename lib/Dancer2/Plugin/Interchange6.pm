@@ -280,6 +280,7 @@ plugin_hooks (qw/before_cart_add_validate
                  before_cart_clear after_cart_clear
                  before_cart_set_users_id after_cart_set_users_id
                  before_cart_set_sessions_id after_cart_set_sessions_id
+                 before_login_display
                 /);
 
 plugin_keywords [ 'shop_cart', 'cart' ], 'shop_charge', 'shop_schema',

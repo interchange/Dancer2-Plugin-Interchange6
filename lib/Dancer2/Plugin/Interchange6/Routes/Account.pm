@@ -3,9 +3,6 @@ package Dancer2::Plugin::Interchange6::Routes::Account;
 use strict;
 use warnings;
 
-use Dancer2::Plugin;
-use Dancer2::Plugin::Interchange6;
-use Dancer2::Plugin::Auth::Extensible;
 use Try::Tiny;
 
 =head1 NAME
@@ -19,8 +16,6 @@ login and logout
 
 =cut
 
-register_hook 'before_login_display';
-
 =head1 FUNCTIONS
 
 =head2 account_routes
@@ -30,53 +25,65 @@ Returns the account routes based on the passed routes configuration.
 =cut
 
 sub account_routes {
-    my $routes_config = shift;
+    my ( $plugin, $routes_config ) = @_;
     my %routes;
+    my $app = $plugin->app;
 
     $routes{login}->{get} = sub {
-        return redirect '/' if logged_in_user;
+        my $app   = shift;
+        my $d2pae = $app->with_plugin('Dancer2::Plugin::Auth::Extensible');
+        return $app->redirect('/') if $d2pae->logged_in_user;
 
         my %values;
 
-        if ( vars->{login_failed} ) {
+        if ( $app->request->vars->{login_failed} ) {
             $values{error} = "Login failed";
         }
 
         # record return_url in template tokens
-        if (my $return_url = param('return_url')) {
+        if ( my $return_url = $app->request->param('return_url') ) {
             $values{return_url} = $return_url;
         }
 
         # call before_login_display route so template tokens
         # can be injected
-        execute_hook('before_login_display', \%values);
+        $app->execute_plugin_hook( 'before_login_display', \%values );
 
         # record return_url in the session to reuse it in post route
-        session return_url => $values{return_url};
+        $app->session->write( return_url => $values{return_url} );
 
-        template $routes_config->{account}->{login}->{template}, \%values;
+        $app->template( $routes_config->{account}->{login}->{template},
+            \%values );
     };
 
     $routes{login}->{post} = sub {
-        return redirect '/' if logged_in_user;
+        my $app   = shift;
+        my $d2pae = $app->with_plugin('Dancer2::Plugin::Auth::Extensible');
+        my $d2pic6 = $app->with_plugin('Dancer2::Plugin::Interchange6');
+
+        return $app->redirect('/') if $d2pae->logged_in_user;
 
         my $login_route = '/' . $routes_config->{account}->{login}->{uri};
 
-        my $user = shop_user->find({ username => params->{username}});
+        my $user = $d2pic6->shop_user->find(
+            { username => $app->request->params->{username} } );
 
         my ($success, $realm, $current_cart);
 
         if ($user) {
             # remember current cart object
-            $current_cart = shop_cart;
+            $current_cart = $d2pic6->shop_cart;
 
-            ($success, $realm) = authenticate_user( params->{username}, params->{password} );
+            ( $success, $realm ) = $d2pae->authenticate_user(
+                $app->request->params->{username},
+                $app->request->params->{password}
+            );
         }
 
         if ($success) {
-            session logged_in_user => $user->username;
-            session logged_in_user_id => $user->id;
-            session logged_in_user_realm => $realm;
+            $app->session->write( logged_in_user       => $user->username );
+            $app->session->write( logged_in_user_id    => $user->id );
+            $app->session->write( logged_in_user_realm => $realm );
 
             if (! $current_cart->users_id) {
                 $current_cart->set_users_id($user->id);
@@ -86,42 +93,53 @@ sub account_routes {
             # sessions were sessions_id is undef in db cart
             $current_cart->load_saved_products;
 
-            if ( session('return_url') ) {
-                my $url = session('return_url');
-                session return_url => undef;
-                return redirect $url;
+            if ( $app->session->read('return_url') ) {
+                my $url = $app->session->read('return_url');
+                $app->session->write( return_url => undef );
+                return $app->redirect( $url );
             }
             else {
-                return redirect '/'
-                  . $routes_config->{account}->{login}->{success_uri};
+                return $app->redirect(
+                    '/' . $routes_config->{account}->{login}->{success_uri} );
             }
         } else {
-            debug "Authentication failed for ", params->{username};
+            $app->log(
+                "debug",
+                "Authentication failed for ",
+                $app->request->params->{username}
+            );
 
-            var login_failed => 1;
-            return forward $login_route, { return_url => params->{return_url} }, { method => 'get' };
+            $app->request->var( login_failed => 1);
+            return $app->forward(
+                $login_route,
+                { return_url => $app->request->params->{return_url} },
+                { method     => 'get' }
+            );
         }
     };
 
     $routes{logout}->{any} = sub {
-        my $cart = shop_cart;
+        my $app   = shift;
+        my $d2pic6 = $app->with_plugin('Dancer2::Plugin::Interchange6');
+        my $cart = $d2pic6->shop_cart;
         if ( $cart->count > 0 ) {
             # save our items for next login
             try {
                 $cart->set_sessions_id(undef);
             }
             catch {
-                warning "Failed to set sessions_id to undef for cart id: "
-                  . $cart->id;
+                $app->log( "warning",
+                    "Failed to set sessions_id to undef for cart id: ",
+                    $cart->id );
             };
         }
         # any empty cart with sessions_id matching our session id will be
         # destroyed here
-        session->destroy;
-        return redirect '/';
+        $app->session->destroy;
+        return $app->redirect( '/' );
     };
 
     return \%routes;
 }
 
-true;
+1;
