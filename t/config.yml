@@ -1,4 +1,4 @@
-log: core
+log: debug
 logger: capture
 show_errors: 1
 template: simple
