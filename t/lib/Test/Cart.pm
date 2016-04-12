@@ -13,6 +13,7 @@ my $trap = $app->logger_engine->trapper;
 my $plugin = $app->with_plugin('Dancer2::Plugin::Interchange6');
 
 sub run_tests {
+    diag "Test::Cart";
 
     $trap->read;    # empty it
 

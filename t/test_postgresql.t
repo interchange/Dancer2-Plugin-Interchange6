@@ -1,29 +1,46 @@
-#!perl
+use strict;
+use warnings;
 
-use File::Spec;
-use Module::Find;
-use Test::Roo;
+use Test::More;
+use Class::Load qw/try_load_class/;
 
-use lib File::Spec->catdir( 't', 'lib' );
-my @test_roles;
+BEGIN {
+    $ENV{DANCER_ENVIRONMENT} = 'postgresql';
 
-if ( $ENV{TEST_ROLE_ONLY} ) {
-    push @test_roles, map { "Test::$_" } split(/,/, $ENV{TEST_ROLE_ONLY});
-}
-else {
-    my @old_inc = @INC;
-    setmoduledirs( File::Spec->catdir( 't', 'lib' ) );
+    try_load_class('DateTime::Format::Pg')
+      or plan skip_all => "DateTime::Format::Pg required to run these tests";
 
-    @test_roles = sort { $a cmp $b } findsubmod Test;
+    try_load_class('DBD::Pg')
+      or plan skip_all => "DBD::Pg required to run these tests";
 
-    setmoduledirs(@old_inc);
+    try_load_class('Test::PostgreSQL')
+      or plan skip_all => "Test::PostgreSQL required to run these tests";
 }
 
-diag "with " . join(" ", @test_roles);
+use lib 't/lib';
+use TestApp;
+use Test::Deploy;
 
-with 'Interchange6::Test::Role::Fixtures',
-  'Interchange6::Test::Role::PostgreSQL', 'Role::Deploy', @test_roles;
+use Dancer2 appname => 'TestApp';
+use File::Temp;
 
-run_me;
+my $tempdir = File::Temp::tempdir(
+    CLEANUP  => 1,
+    TEMPLATE => 'ic6s_test_XXXXX',
+    TMPDIR   => 1,
+);
+
+no warnings 'once';    # prevent: "Test::PostgreSQL::errstr" used only once
+my $pgsql = Test::PostgreSQL->new(
+    base_dir => $tempdir,
+) or plan skip_all => "Test::PostgreSQL died: " . $Test::PostgreSQL::errstr;
+use warnings 'once';
+
+my $dsn = $pgsql->dsn( dbname => 'test' );
+
+Test::Deploy::deploy($dsn);
+Test::Cart::run_tests();
+Test::DSL::run_tests();
+Test::Routes::run_tests();
 
 done_testing;
