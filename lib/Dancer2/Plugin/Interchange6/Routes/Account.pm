@@ -20,12 +20,12 @@ login and logout
 
 =head2 account_routes
 
-Returns the account routes based on the passed routes configuration.
+Returns the account routes based on the plugin configuration.
 
 =cut
 
 sub account_routes {
-    my $routes_config = shift;
+    my $plugin = shift;
     my %routes;
 
     $routes{login}->{get} = sub {
@@ -46,30 +46,31 @@ sub account_routes {
 
         # call before_login_display route so template tokens
         # can be injected
-        $app->execute_plugin_hook( 'before_login_display', \%values );
+        $app->execute_hook( 'plugin.interchange6.before_login_display',
+            \%values );
 
         # record return_url in the session to reuse it in post route
         $app->session->write( return_url => $values{return_url} );
 
-        $app->template( $routes_config->{account}->{login}->{template},
-            \%values );
+        $app->template( $plugin->login_template, \%values );
     };
 
     $routes{login}->{post} = sub {
-        my $app   = shift;
-        my $d2pae = $app->with_plugin('Dancer2::Plugin::Auth::Extensible');
+        my $app    = shift;
+        my $d2pae  = $app->with_plugin('Dancer2::Plugin::Auth::Extensible');
         my $d2pic6 = $app->with_plugin('Dancer2::Plugin::Interchange6');
 
         return $app->redirect('/') if $d2pae->logged_in_user;
 
-        my $login_route = '/' . $routes_config->{account}->{login}->{uri};
+        my $login_route = '/' . $plugin->login_uri;
 
         my $user = $d2pic6->shop_user->find(
             { username => $app->request->params->{username} } );
 
-        my ($success, $realm, $current_cart);
+        my ( $success, $realm, $current_cart );
 
         if ($user) {
+
             # remember current cart object
             $current_cart = $d2pic6->shop_cart;
 
@@ -84,8 +85,8 @@ sub account_routes {
             $app->session->write( logged_in_user_id    => $user->id );
             $app->session->write( logged_in_user_realm => $realm );
 
-            if (! $current_cart->users_id) {
-                $current_cart->set_users_id($user->id);
+            if ( !$current_cart->users_id ) {
+                $current_cart->set_users_id( $user->id );
             }
 
             # now pull back in old cart items from previous authenticated
@@ -95,20 +96,20 @@ sub account_routes {
             if ( $app->session->read('return_url') ) {
                 my $url = $app->session->read('return_url');
                 $app->session->write( return_url => undef );
-                return $app->redirect( $url );
+                return $app->redirect($url);
             }
             else {
-                return $app->redirect(
-                    '/' . $routes_config->{account}->{login}->{success_uri} );
+                return $app->redirect( '/' . $plugin->login_success_uri );
             }
-        } else {
+        }
+        else {
             $app->log(
                 "debug",
                 "Authentication failed for ",
                 $app->request->params->{username}
             );
 
-            $app->request->var( login_failed => 1);
+            $app->request->var( login_failed => 1 );
             return $app->forward(
                 $login_route,
                 { return_url => $app->request->params->{return_url} },
@@ -118,10 +119,11 @@ sub account_routes {
     };
 
     $routes{logout}->{any} = sub {
-        my $app   = shift;
+        my $app    = shift;
         my $d2pic6 = $app->with_plugin('Dancer2::Plugin::Interchange6');
-        my $cart = $d2pic6->shop_cart;
+        my $cart   = $d2pic6->shop_cart;
         if ( $cart->count > 0 ) {
+
             # save our items for next login
             try {
                 $cart->set_sessions_id(undef);
@@ -132,10 +134,11 @@ sub account_routes {
                     $cart->id );
             };
         }
+
         # any empty cart with sessions_id matching our session id will be
         # destroyed here
-        $app->session->destroy;
-        return $app->redirect( '/' );
+        $app->destroy_session;
+        return $app->redirect('/');
     };
 
     return \%routes;

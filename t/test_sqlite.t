@@ -7,6 +7,8 @@ use Test::Roo;
 use lib File::Spec->catdir( 't', 'lib' );
 my @test_roles;
 
+$ENV{DANCER_ENVDIR} = 't/environment';
+#$ENV{DANCER_ENVIRONMENT} = 'sqlite';
 if ( $ENV{TEST_ROLE_ONLY} ) {
     push @test_roles, map { "Test::$_" } split(/,/, $ENV{TEST_ROLE_ONLY});
 }

@@ -90,8 +90,8 @@ of your main module:
 
     true;
 
-Please refer to L<Dancer2::Plugin::Interchange6::Routes> for configuration options
-and further information.
+Please refer to L<Dancer2::Plugin::Interchange6::Routes> for configuration
+options and further information.
 
 =head1 KEYWORDS
 
@@ -251,6 +251,20 @@ functionality please copy/link to Dancer2 App/bin directory.
 
 =cut
 
+# config
+
+has cart_class => (
+    is          => 'ro',
+    from_config => sub { 'Dancer2::Plugin::Interchange6::Cart' },
+);
+
+has carts_var_name => (
+    is => 'ro',
+    from_config => sub { 'ic6_carts' },
+);
+
+# plugins we use
+
 has plugin_auth_extensible => (
     is      => 'ro',
     is      => 'lazy',
@@ -271,67 +285,90 @@ has plugin_dbic => (
     init_arg => undef,
 );
 
-plugin_hooks (qw/before_cart_add_validate
-                 before_cart_add after_cart_add
-                 before_cart_update after_cart_update
-                 before_cart_remove_validate
-                 before_cart_remove after_cart_remove
-                 before_cart_rename after_cart_rename
-                 before_cart_clear after_cart_clear
-                 before_cart_set_users_id after_cart_set_users_id
-                 before_cart_set_sessions_id after_cart_set_sessions_id
-                 before_cart_display
-                 before_checkout_display
-                 before_login_display
-                /);
+# hooks
 
-plugin_keywords [ 'shop_cart', 'cart' ], 'shop_charge', 'shop_schema',
+plugin_hooks(
+    qw/before_cart_add_validate
+      before_cart_add after_cart_add
+      before_cart_update after_cart_update
+      before_cart_remove_validate
+      before_cart_remove after_cart_remove
+      before_cart_rename after_cart_rename
+      before_cart_clear after_cart_clear
+      before_cart_set_users_id after_cart_set_users_id
+      before_cart_set_sessions_id after_cart_set_sessions_id
+      before_cart_display
+      before_checkout_display
+      before_login_display
+      /
+);
 
-  shop_address => sub {
-    _shop_resultset( shift, 'Address', @_ );
-  },
+plugin_keywords 'shop_address',
+  'shop_attribute',
+  [ 'shop_cart', 'cart' ],
+  'shop_charge',
+  'shop_country',
+  'shop_message',
+  'shop_navigation',
+  'shop_order',
+  'shop_product',
+  'shop_redirect',
+  'shop_schema',
+  'shop_state',
+  'shop_user';
 
-  shop_attribute => sub {
-    _shop_resultset( shift, 'Attribute', @_ );
-  },
+sub shop_address {
+    shift->_shop_resultset( 'Address', @_ );
+}
 
-  shop_country => sub {
-    _shop_resultset( shift, 'Country', @_ );
-  },
+sub shop_attribute {
+    shift->_shop_resultset( 'Attribute', @_ );
+}
 
-  shop_message => sub {
-    _shop_resultset( shift, 'Message', @_ );
-  },
+sub shop_cart {
+    my $plugin = shift;
 
-  shop_navigation => sub {
-    _shop_resultset( shift, 'Navigation', @_ );
-  },
+    my %args;
 
-  shop_order => sub {
-    _shop_resultset( shift, 'Order', @_ );
-  },
+    # cart name from arg or default 'main'
+    $args{name} = @_ == 1 ? $_[0] : 'main';
 
-  shop_product => sub {
-    _shop_resultset( shift, 'Product', @_ );
-  },
+    # set name of var we will stash carts in
+    my $var = $plugin->carts_var_name;
+    $plugin->app->log( "debug", "carts_var_name: $var" );
 
-  shop_redirect => sub {
-    return resultset('UriRedirect')->redirect( $_[1] );
-  },
+    my $carts = $plugin->app->request->var($var) || {};
 
-  shop_state => sub {
-    _shop_resultset( shift, 'State', @_ );
-  },
+    if ( !defined $carts->{ $args{name} } ) {
 
-  shop_user => sub {
-    _shop_resultset( shift, 'User', @_ );
-  };
+        # can't find this cart in stash
+
+        $args{plugin}      = $plugin;
+        $args{schema}      = $plugin->schema;
+        $args{sessions_id} = $plugin->app->session->id;
+
+        if ( my $user_ref = $plugin->logged_in_user ) {
+
+            # user is logged in
+            # FIXME: D2PAE currently returns a hashref
+            $args{users_id} = $user_ref->{users_id};
+        }
+
+        $carts->{ $args{name} } = use_module($plugin->cart_class)->new(%args);
+    }
+
+    # stash carts back in var
+    $plugin->app->request->var( $var => $carts );
+
+    return $carts->{ $args{name} };
+}
 
 sub shop_charge {
     my ( $plugin, %args ) = @_;
-	my ($schema, $bop_object, $payment_settings, $provider, $provider_settings);
+    my ( $schema, $bop_object, $payment_settings, $provider,
+        $provider_settings );
 
-	$payment_settings = $plugin->config->{payment};
+    $payment_settings = $plugin->config->{payment};
 
     die "No payment setting" unless $payment_settings;
 
@@ -343,88 +380,81 @@ sub shop_charge {
         $provider = $payment_settings->{default_provider};
     }
 
-    if (exists $payment_settings->{providers}->{$provider}) {
+    if ( exists $payment_settings->{providers}->{$provider} ) {
         $provider_settings = $payment_settings->{providers}->{$provider};
     }
     else {
         die "Settings for provider $provider missing.";
     }
 
-    my %payment_data = (payment_mode => $provider,
-                        status => 'request',
-                        sessions_id => session->id,
-                        payment_action => 'charge',
-                        amount => $args{amount},
-                        users_id => session('logged_in_user_id'),
-                        );
+    my %payment_data = (
+        payment_mode   => $provider,
+        status         => 'request',
+        sessions_id    => $plugin->app->session->id,
+        payment_action => 'charge',
+        amount         => $args{amount},
+        users_id       => $plugin->app->session->read('logged_in_user_id'),
+    );
 
     # create payment order
     $schema = $plugin->shop_schema;
 
-    my $payment_order = $schema->resultset('PaymentOrder')->create(\%payment_data);
+    my $payment_order =
+      $schema->resultset('PaymentOrder')->create( \%payment_data );
 
     # create BOP object wrapper with provider settings
-	$bop_object = Dancer2::Plugin::Interchange6::Business::OnlinePayment->new($provider, %$provider_settings);
+    $bop_object =
+      Dancer2::Plugin::Interchange6::Business::OnlinePayment->new( $provider,
+        %$provider_settings );
 
     $bop_object->payment_order($payment_order);
 
     # call charge method
     $bop_object->charge(%args);
 
-    if ($bop_object->is_success) {
-        $payment_order->update({
-            status => 'success',
-            auth_code => $bop_object->authorization,
-        });
+    if ( $bop_object->is_success ) {
+        $payment_order->update(
+            {
+                status    => 'success',
+                auth_code => $bop_object->authorization,
+            }
+        );
     }
     else {
-        $payment_order->update({
-            status => 'failure',
-	    payment_error_code => $bop_object->error_code,
-	    payment_error_message => $bop_object->error_message,
-        });
+        $payment_order->update(
+            {
+                status                => 'failure',
+                payment_error_code    => $bop_object->error_code,
+                payment_error_message => $bop_object->error_message,
+            }
+        );
     }
 
-	return $bop_object;
-};
+    return $bop_object;
+}
 
-sub shop_cart {
-    my $plugin = shift;
+sub shop_country {
+    shift->_shop_resultset( 'Country', @_ );
+}
 
-    my ( %args, $user_ref );
+sub shop_message {
+    shift->_shop_resultset( 'Message', @_ );
+}
 
-    # cart name from arg or default 'main'
-    $args{name} = @_ == 1 ? $_[0] : 'main';
+sub shop_navigation {
+    shift->_shop_resultset( 'Navigation', @_ );
+}
 
-    # set name of var we will stash carts in
-	my $var = $plugin->config->{carts_var_name} || 'ic6_carts';
-    $plugin->app->log("debug", "carts_var_name: $var");
+sub shop_order {
+    shift->_shop_resultset( 'Order', @_ );
+}
 
-    # cart class
-    my $cart_class = $plugin->config->{cart_class}
-      || 'Dancer2::Plugin::Interchange6::Cart';
+sub shop_product {
+    shift->_shop_resultset( 'Product', @_ );
+}
 
-    my $carts = $plugin->app->request->var($var) || {};
-
-    if ( !defined $carts->{ $args{name} } ) {
-
-        # can't find this cart in stash
-
-        $args{sessions_id} = $plugin->app->session->read('id');
-
-        if ( $user_ref = $plugin->logged_in_user ) {
-
-            # user is logged in
-            $args{users_id} = $user_ref->users_id;
-        }
-
-        $carts->{ $args{name} } = use_module($cart_class)->new(%args);
-    }
-
-    # stash carts back in var
-    $plugin->app->request->var( $var => $carts );
-
-    return $carts->{ $args{name} };
+sub shop_redirect {
+    return $_[0]->resultset('UriRedirect')->redirect( $_[1] );
 }
 
 sub shop_schema {
@@ -439,18 +469,26 @@ sub shop_schema {
     }
 
     return $plugin->schema($schema_key);
-};
+}
+
+sub shop_state {
+    shift->_shop_resultset( 'State', @_ );
+}
+
+sub shop_user {
+    shift->_shop_resultset( 'User', @_ );
+}
 
 sub _shop_resultset {
     my $plugin = shift;
-    my ($name, $key) = @_;
+    my ( $name, $key ) = @_;
 
-    if (defined $key) {
+    if ( defined $key ) {
         return $plugin->resultset($name)->find($key);
     }
 
     return $plugin->resultset($name);
-};
+}
 
 =head1 ACKNOWLEDGEMENTS
 

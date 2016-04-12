@@ -1,6 +1,6 @@
-log: debug
+log: core
 logger: capture
-show_errors: 0
+show_errors: 1
 template: simple
 plugins:
   Auth::Extensible:
@@ -14,13 +14,19 @@ plugins:
     realms:
       users:
         provider: 'DBIC'
-        db_connection_name: 'default'
+        schema_name: 'default'
         users_resultset: User
-        roles_relationship: roles
-        role_column: name
-        username_column: username
-        password_column: password
-        password_check: check_password
+        roles_resultset: Role
+        user_roles_resultset: UserRole
+        roles_role_column: name
+        users_username_column: username
+        users_password_column: password
+        users_password_check: check_password
+  DBIC:
+    default:
+      schema_class: Interchange6::Schema
+    shop2:
+      schema_class: Interchange6::Schema
   Interchange6:
     payment:
       default_provider: MockSuccess
@@ -36,3 +42,8 @@ plugins:
       active: 1
     navigation:
       records: 10
+engines:
+  session:
+    DBIC:
+      db_connection_name: default
+session: DBIC

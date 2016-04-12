@@ -190,35 +190,98 @@ to L<Dancer2::Plugin::Auth::Extensible/logged_in_user> or C<undef>.
 
 =cut
 
-plugin_keywords 'shop_setup_routes';
-
-plugin_hooks (qw/before_product_display before_navigation_search
-    before_navigation_display/);
-
-our $object_autodetect = 0;
-
-our %route_defaults = (
-    account => {login => {template => 'login',
-                          uri => 'login',
-                          success_uri => '',
-                      },
-                logout => {template => 'logout',
-                           uri => 'logout',
-                       },
-            },
-    cart => {template => 'cart',
-             uri => 'cart',
-             active => 1,
-         },
-    checkout => {template => 'checkout',
-                 uri => 'checkout',
-                 active => 0,
-             },
-    navigation => {template => 'listing',
-                   records => 0,
-               },
-    product => {template => 'product'},
+plugin_hooks(
+    qw/before_product_display before_navigation_search
+      before_navigation_display/
 );
+
+# config attributes
+
+has login_template => (
+    is          => 'ro',
+    from_config => 'account.login.template',
+    default     => sub { 'login' },
+);
+
+has login_uri => (
+    is          => 'ro',
+    from_config => 'account.login.uri',
+    default     => sub { 'login' },
+);
+
+has login_success_uri => (
+    is          => 'ro',
+    from_config => 'account.login.success_uri',
+    default     => sub { '' },
+);
+
+has logout_template => (
+    is          => 'ro',
+    from_config => 'account.logout.template',
+    default     => sub { 'logout' },
+);
+
+has logout_uri => (
+    is          => 'ro',
+    from_config => 'account.logout.uri',
+    default     => sub { 'logout' },
+);
+
+has cart_template => (
+    is          => 'ro',
+    from_config => 'cart.template',
+    default     => sub { 'cart' },
+);
+
+has cart_uri => (
+    is          => 'ro',
+    from_config => 'cart.uri',
+    default     => sub { 'cart' },
+);
+
+has cart_active => (
+    is          => 'ro',
+    from_config => 'cart.active',
+    default     => sub { 1 },
+);
+
+has checkout_template => (
+    is          => 'ro',
+    from_config => 'checkout.template',
+    default     => sub { 'checkout' },
+);
+
+has checkout_uri => (
+    is          => 'ro',
+    from_config => 'checkout.uri',
+    default     => sub { 'checkout' },
+);
+
+has checkout_active => (
+    is          => 'ro',
+    from_config => 'checkout.active',
+    default     => sub { 0 },
+);
+
+has navigation_template => (
+    is          => 'ro',
+    from_config => 'navigation.template',
+    default     => sub { 'listing' },
+);
+
+has navigation_records => (
+    is          => 'ro',
+    from_config => 'navigation.records',
+    default     => sub { 0 },
+);
+
+has product_template => (
+    is          => 'ro',
+    from_config => 'product.template',
+    default     => sub { 'product' },
+);
+
+# plugins we use
 
 has plugin_auth_extensible => (
     is      => 'ro',
@@ -235,87 +298,110 @@ has plugin_interchange6 => (
     default => sub {
         $_[0]->app->with_plugin('Dancer2::Plugin::Interchange6');
     },
-    handles =>
-      [ 'shop_navigation', 'shop_product', 'shop_redirect', 'shop_schema', ],
+    handles => {
+        shop_cart       => 'shop_cart',
+        shop_navigation => 'shop_navigation',
+        shop_product    => 'shop_product',
+        shop_redirect   => 'shop_redirect',
+        shop_schema     => 'shop_schema',
+        shop_user       => 'shop_user',
+    },
 );
+
+# other attributes
+
+has object_autodetect => (
+    is   => 'ro',
+    lazy => 1,
+    default =>
+      sub { $_[0]->app->config->{template} eq 'template_flute' ? 1 : 0 },
+);
+
+# keywords
+
+plugin_keywords 'shop_setup_routes';
 
 sub shop_setup_routes {
     my $plugin = shift;
     my $app    = $plugin->app;
 
     my $sub;
-    my $plugin_config = $plugin->config;
 
     $app->add_hook(
         Dancer2::Core::Hook->new(
             name => 'before',
             code => sub {
-                $plugin->shop_schema->set_current_user( $plugin->logged_in_user
-                      || undef );
+
+                # D2PAE::Provider::DBIC returns logged_in_user as hashref
+                # instead of a proper user result so we have to mess about.
+                # At some point in the future D2PAE will be fixed to allow
+                # user objects to be returned.
+                my $user = $plugin->logged_in_user || undef;
+                if ( $user && $user->{username} ) {
+                    $user = $plugin->shop_user->find(
+                        {
+                            username => $user->{username}
+                        }
+                    );
+                }
+                $plugin->shop_schema->set_current_user($user);
             },
         )
     );
 
-    # update settings with defaults
-    my $routes_config = _config_routes($plugin_config, \%route_defaults);
-
     # display warnings
-    _config_warnings($routes_config);
-
-    # check whether template engine has object autodetect
-    if ($app->config->{template} eq 'template_flute') {
-        $object_autodetect = 1;
-    }
+    $plugin->_config_warnings;
 
     # account routes
-    my $account_routes = Dancer2::Plugin::Interchange6::Routes::Account::account_routes($routes_config);
+    my $account_routes =
+      Dancer2::Plugin::Interchange6::Routes::Account::account_routes($plugin);
 
     $app->add_route(
         method => 'get',
-        regexp => '/' . $routes_config->{account}->{login}->{uri},
+        regexp => '/' . $plugin->login_uri,
         code   => $account_routes->{login}->{get},
     );
 
-    $app->ad_route(
+    $app->add_route(
         method => 'post',
-        regexp => '/' . $routes_config->{account}->{login}->{uri},
+        regexp => '/' . $plugin->login_uri,
         code   => $account_routes->{login}->{post},
     );
 
     foreach my $method ( 'get', 'post' ) {
         $app->add_route(
             method => $method,
-            regexp => '/' . $routes_config->{account}->{logout}->{uri},
+            regexp => '/' . $plugin->logout_uri,
             code   => $account_routes->{logout}->{any},
         );
     }
 
-    if ( $routes_config->{cart}->{active} ) {
+    if ( $plugin->cart_active ) {
 
         # routes for cart
-        my $cart_sub = Dancer2::Plugin::Interchange6::Routes::Cart::cart_route(
-            $routes_config);
+        my $cart_sub =
+          Dancer2::Plugin::Interchange6::Routes::Cart::cart_route($plugin);
 
         foreach my $method ( 'get', 'post' ) {
             $app->add_route(
                 method => $method,
-                regexp => '/' . $routes_config->{cart}->{uri},
+                regexp => '/' . $plugin->cart_uri,
                 code   => $cart_sub,
             );
         }
     }
 
-    if ( $routes_config->{checkout}->{active} ) {
+    if ( $plugin->checkout_active ) {
 
         # routes for checkout
         my $checkout_sub =
           Dancer2::Plugin::Interchange6::Routes::Checkout::checkout_route(
-            $routes_config);
+            $plugin);
 
         foreach my $method ( 'get', 'post' ) {
             $app->add_route(
                 method => $method,
-                regexp => '/' . $routes_config->{checkout}->{uri},
+                regexp => '/' . $plugin->checkout_uri,
                 code   => $checkout_sub,
             );
         }
@@ -326,7 +412,10 @@ sub shop_setup_routes {
         method => 'get',
         regexp => qr{/(?<path>.+)},
         code   => sub {
+            my $app  = shift;
             my $path = $app->request->captures->{'path'};
+
+            my $schema = $plugin->shop_schema;
 
             # check for a matching product by uri
             my $product =
@@ -359,8 +448,7 @@ sub shop_setup_routes {
                     $tokens );
 
                 my $output =
-                  $app->template( $routes_config->{product}->{template},
-                    $tokens );
+                  $app->template( $plugin->product_template, $tokens );
 
                 # temporary way to erase cart errors from missing variants
                 $app->session->write( shop_cart_error => undef );
@@ -387,14 +475,12 @@ sub shop_setup_routes {
                 # navigation item found
 
                 # retrieve navigation attribute for template
-                my $template = $routes_config->{navigation}->{template};
+                my $template = $plugin->navigation_template;
 
                 if ( my $attr_value = $nav->find_attribute_value('template') ) {
-                    $app->log(
-                        "debug",
-                        "Change template name from $template".
-                        " to $attr_value due to navigation attribute."
-                    );
+                    $app->log( "debug",
+                            "Change template name from $template"
+                          . " to $attr_value due to navigation attribute." );
                     $template = $attr_value;
                 }
 
@@ -415,13 +501,12 @@ sub shop_setup_routes {
                   ->navigation_products->search_related('product')
                   ->active->listing->order_by('!me.priority,!product.priority');
 
-                if ( defined $routes_config->{navigation}->{records} ) {
+                if ( defined $plugin->navigation_records ) {
 
                     # records per page is set in configuration so page the
                     # result set
 
-                    $products =
-                      $products->rows( $routes_config->{navigation}->{records} )
+                    $products = $products->rows( $plugin->navigation_records )
                       ->page( $tokens->{page} );
                 }
 
@@ -431,7 +516,7 @@ sub shop_setup_routes {
 
                 # can template autodetect objects?
 
-                if ( !$object_autodetect ) {
+                if ( !$plugin->object_autodetect ) {
                     $products = [ $products->all ];
                 }
 
@@ -458,37 +543,16 @@ sub shop_setup_routes {
             }
 
             # display not_found page
-            $app->response->status( 'not_found' );
+            $app->response->status('not_found');
             $app->forward(404);
         },
     );
 }
 
-sub _config_routes {
-    my ($settings, $defaults) = @_;
-    my ($key, $vref, $name, $value, $set_value);
-
-    unless (ref($defaults)) {
-        return;
-    }
-
-    while (($key, $vref) = each %$defaults) {
-        if (exists $settings->{$key}) {
-            # recurse
-            _config_routes($settings->{$key}, $defaults->{$key});
-        }
-        else {
-            $settings->{$key} = $defaults->{$key};
-        }
-    }
-
-    return $settings;
-}
-
 sub _config_warnings {
-    my ($settings) = @_;
+    my $plugin = shift;
 
-    if ($settings->{navigation}->{records} == 0) {
+    if ( $plugin->navigation_records == 0 ) {
         warn __PACKAGE__, ": Maximum number of navigation records is zero.\n";
     }
 }

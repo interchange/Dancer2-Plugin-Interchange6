@@ -3,12 +3,25 @@ package TestApp;
 use strict;
 use warnings;
 
-use Data::Dumper;
-use Dancer2 ':syntax';
+BEGIN {
+    $ENV{DANCER_CONFDIR} = 't';
+    $ENV{DANCER_ENVDIR}  = 't/environment';
+    die "DANCER_ENVIRONMENT not set" unless $ENV{DANCER_ENVIRONMENT};
+}
+
+{
+
+    package Fixtures;
+    use Moo;
+    with 'Interchange6::Test::Role::Fixtures';
+    has ic6s_schema => ( is => 'ro', );
+}
+
+use Dancer2;
 use Dancer2::Plugin::Interchange6;
 use Dancer2::Plugin::Interchange6::Routes;
-use Dancer2::Plugin::Auth::Extensible;
 use Dancer2::Plugin::DBIC;
+use Dancer2::Plugin::Auth::Extensible;
 
 # ROUTES
 
@@ -65,7 +78,8 @@ hook before_cart_display => sub {
     debug join( " ",
         "hook before_cart_display",
         scalar @$products,
-        sprintf( "%.2f", $cart_subtotal ), sprintf( "%.2f", $cart_total ) );
+        sprintf( "%.2f", $cart_subtotal ),
+        sprintf( "%.2f", $cart_total ) );
 
     $tokens->{cart} = join(
         ",",
@@ -87,8 +101,8 @@ hook before_checkout_display => sub {
     debug join( " ",
         "hook before_checkout_display",
         scalar @$products,
-        sprintf( "%.2f", $cart_subtotal ), sprintf( "%.2f", $cart_total ) );
-
+        sprintf( "%.2f", $cart_subtotal ),
+        sprintf( "%.2f", $cart_total ) );
 
     $tokens->{cart} = join(
         ",",
@@ -102,11 +116,11 @@ hook before_checkout_display => sub {
 };
 
 hook before_login_display => sub {
-    my ($tokens)   = @_;
-    my $error      = $tokens->{error} || 'none';
+    my ($tokens) = @_;
+    my $error      = $tokens->{error}      || 'none';
     my $return_url = $tokens->{return_url} || 'none';
 
-    debug join(" ", "hook before_login_display", $error, $return_url);
+    debug join( " ", "hook before_login_display", $error, $return_url );
 };
 
 hook before_product_display => sub {
@@ -156,7 +170,7 @@ hook before_cart_add_validate => sub {
         "hook before_cart_add_validate",
         $cart->name,
         sprintf( "%.2f", $cart->total ),
-        $args->[0]->{sku} || 'undef' );
+        ref( $args->[0] ) eq 'HASH' ? $args->[0]->{sku} : $args->[0] );
 };
 
 hook before_cart_add => sub {
@@ -164,7 +178,8 @@ hook before_cart_add => sub {
 
     debug join( " ",
         "hook before_cart_add",
-        $cart->name, sprintf( "%.2f", $cart->total ),
+        $cart->name,
+        sprintf( "%.2f", $cart->total ),
         $products->[0]->{sku},
         $products->[0]->{name} );
 };
@@ -174,7 +189,8 @@ hook after_cart_add => sub {
 
     debug join( " ",
         "hook after_cart_add",
-        $cart->name, sprintf( "%.2f", $cart->total ),
+        $cart->name,
+        sprintf( "%.2f", $cart->total ),
         ref( $products->[0] ),
         $products->[0]->sku,
         $products->[0]->name );
@@ -188,7 +204,8 @@ hook before_cart_update => sub {
 
     debug join( " ",
         "hook before_cart_update",
-        $cart->name, sprintf( "%.2f", $cart->total ), $sku, $quantity );
+        $cart->name, sprintf( "%.2f", $cart->total ),
+        $sku, $quantity );
 };
 
 hook after_cart_update => sub {
@@ -204,7 +221,9 @@ hook before_cart_remove_validate => sub {
 
     debug join( " ",
         "hook before_cart_remove_validate",
-        $cart->name, sprintf( "%.2f", $cart->total ), $sku || 'undef' );
+        $cart->name,
+        sprintf( "%.2f", $cart->total ),
+        $sku || 'undef' );
 };
 
 hook before_cart_remove => sub {
@@ -212,15 +231,17 @@ hook before_cart_remove => sub {
 
     debug join( " ",
         "hook before_cart_remove",
-        $cart->name, sprintf( "%.2f", $cart->total ), $sku || 'undef' );
+        $cart->name,
+        sprintf( "%.2f", $cart->total ),
+        $sku || 'undef' );
 };
 
 hook after_cart_remove => sub {
     my ( $cart, $sku ) = @_;
 
     debug join( " ",
-        "hook after_cart_remove",
-        $cart->name, sprintf( "%.2f", $cart->total ), $sku );
+        "hook after_cart_remove", $cart->name,
+        sprintf( "%.2f", $cart->total ), $sku );
 };
 
 hook before_cart_rename => sub {
@@ -236,9 +257,8 @@ hook before_cart_rename => sub {
 hook after_cart_rename => sub {
     my ( $cart, $old_name, $new_name ) = @_;
 
-    debug join( " ",
-        "hook after_cart_rename",
-        $cart->name, $old_name, $new_name );
+    debug
+      join( " ", "hook after_cart_rename", $cart->name, $old_name, $new_name );
 };
 
 hook before_cart_clear => sub {
@@ -262,14 +282,15 @@ hook before_cart_set_users_id => sub {
 
     debug join( " ",
         "hook before_cart_set_users_id",
-        $cart->name, sprintf( "%.2f", $cart->total ),
+        $cart->name,
+        sprintf( "%.2f", $cart->total ),
         $cart->users_id || 'undef',
         $users_id || 'undef' );
 };
 
 hook after_cart_set_users_id => sub {
 
-    debug join( " ", "hook after_cart_set_users_id", @_);
+    debug join( " ", "hook after_cart_set_users_id", @_ );
 };
 
 hook before_cart_set_sessions_id => sub {

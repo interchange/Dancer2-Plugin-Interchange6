@@ -1,26 +1,31 @@
 package Test::Routes;
 
-use Cwd;
-use File::Spec;
-use Dancer2 qw/:syntax !pass/;
+use strict;
+use warnings;
+
 use Test::More;
 use Test::Deep;
 use Test::Exception;
+use Test::WWW::Mechanize::PSGI;
 
-use Test::Roo::Role;
+use Dancer2 '!pass', appname => 'TestApp';
+use Dancer2::Plugin::Interchange6;
 
-test 'route tests' => sub {
-    my $self = shift;
-    my $mech = $self->mech;
+my $app  = dancer_app;
+my $trap = $app->logger_engine->trapper;
 
+my $mech = Test::WWW::Mechanize::PSGI->new( app => TestApp->to_app );
+
+sub run_tests {
     diag "Test::Routes";
 
     my ( $resp, $sessionid, %form, $log, $user, @carts, $product );
 
-    my $schema = $self->ic6s_schema;
+    my $schema = shop_schema;
 
     # make sure user is logged out and there are no existing carts
-    $self->mech->get_ok('/logout', "make sure we're logged out");
+    $mech->get_ok( '/logout', "make sure we're logged out" )
+      || diag explain $trap->read;
     $schema->resultset('Cart')->delete_all;
 
     $mech->get_ok( '/ergo-roller', "GET /ergo-roller (product route via uri)" );
@@ -30,13 +35,15 @@ test 'route tests' => sub {
 
     $mech->get_ok( '/os28005', "GET /os28005 (product route via sku)" );
 
-    $log = $self->trap->read;
+    $log = $trap->read;
     cmp_deeply(
         $log,
         superbagof(
             {
-                level => "debug",
-                message => "Redirecting permanently to product uri trim-brush for os28005."
+                formatted => ignore(),
+                level     => "debug",
+                message =>
+"Redirecting permanently to product uri trim-brush for os28005."
             }
         ),
         "Check 'Redirecting permanently...' debug message"
@@ -46,14 +53,16 @@ test 'route tests' => sub {
 
     # navigation
 
-    $mech->get_ok( '/hand-tools', "GET /hand-tools (navigation route)" );
+    $mech->get_ok( '/hand-tools', "GET /hand-tools (navigation route)" )
+      or diag explain $trap->read;
 
     $mech->content_like( qr|name="Hand Tools"|, 'found Hand Tools' );
 
     $mech->content_like( qr|products="([^,]+,){9}[^,]+"|, 'found 10 products' );
 
     $mech->get_ok( '/hand-tools/brushes',
-        "GET /hand-tools/brushes (navigation route)" );
+        "GET /hand-tools/brushes (navigation route)" )
+      or diag explain $trap->read;
 
     $mech->content_like( qr|name="Brushes"|, 'found Brushes' );
 
@@ -72,17 +81,19 @@ test 'route tests' => sub {
 
     # cart
 
-    $self->trap->read;
+    $trap->read;
 
-    $mech->get_ok( '/cart?cart=foobar', "GET /cart?cart=foobar" );
+    $mech->get_ok( '/cart?cart=foobar', "GET /cart?cart=foobar" )
+      or diag explain $trap->read;
 
-    $log = $self->trap->read;
+    $log = $trap->read;
     cmp_deeply(
         $log,
         superbagof(
             {
-                level => "debug",
-                message => "cart_route cart name: foobar",
+                formatted => ignore(),
+                level     => "debug",
+                message   => "cart_route cart name: foobar",
             }
         ),
         "check debug logs for cart name"
@@ -188,20 +199,21 @@ test 'route tests' => sub {
     $mech->content_like( qr/cart_total="48/, 'cart_total is 48.00' );
 
     # remove product not in the cart
-    $self->trap->read;
+    $trap->read;
     $mech->post_ok(
         '/cart',
         { remove => 'definitelynotinthecart' },
         "POST /cart remove product that is not in the cart"
     );
-    
-    $log = $self->trap->read;
+
+    $log = $trap->read;
     cmp_deeply(
         $log,
         superbagof(
             {
-                level => "warning",
-                message => re(qr/^Cart remove error/),
+                formatted => ignore(),
+                level     => "warning",
+                message   => re(qr/^Cart remove definitelynotinthecart error/),
             }
         ),
         "check debug logs for cart remove"
@@ -215,40 +227,43 @@ test 'route tests' => sub {
     );
 
     # update product not in the cart
-    $self->trap->read;
+    $trap->read;
     $mech->post_ok(
         '/cart',
         { update => 'definitelynotinthecart', quantity => 1 },
         "POST /cart update product that is not in the cart"
     );
-    
-    $log = $self->trap->read;
+
+    $log = $trap->read;
     cmp_deeply(
         $log,
         superbagof(
             {
-                level => "warning",
-                message => re(qr/^Update cart product error/),
+                formatted => ignore(),
+                level     => "warning",
+                message =>
+                  re(qr/^Update cart product definitelynotinthecart error/),
             }
         ),
         "check debug logs for cart remove"
     ) or diag explain $log;
 
     # add product with non-Int quantity
-    $self->trap->read;
+    $trap->read;
     $mech->post_ok(
         '/cart',
         { sku => 'os28004-HUM-BLK', quantity => 1.1 },
         "POST /cart add with non-integer quantity"
     );
-    
-    $log = $self->trap->read;
+
+    $log = $trap->read;
     cmp_deeply(
         $log,
         superbagof(
             {
-                level => "warning",
-                message => re(qr/^Cart add error/),
+                formatted => ignore(),
+                level     => "warning",
+                message   => re(qr/^Cart add error/),
             }
         ),
         "check debug logs for cart remove"
@@ -269,14 +284,16 @@ test 'route tests' => sub {
     # get product by sku that has no uri
 
     lives_ok {
-        $product = $self->ic6s_schema->resultset('Product')->create(
+        $product =
+          $schema->resultset('Product')
+          ->create(
             { sku => 'NoUri', name => 'No URI', description => '', price => 1 }
           )
     }
     "create product NoUri with no uri";
 
     # uri is generated on insert so we have to delete the auto-generated one
-    lives_ok { $product->update({ uri => undef }) } "undef product uri";
+    lives_ok { $product->update( { uri => undef } ) } "undef product uri";
 
     $mech->get_ok( '/NoUri', 'GET /NoUri' );
 
@@ -291,7 +308,9 @@ test 'route tests' => sub {
     $mech->get_ok( '/sessionid', "GET /sessionid" );
     $sessionid = $mech->content;
 
-    $mech->get_ok( '/private', "GET /private (login restricted)" );
+    $trap->read;
+    $mech->get_ok( '/private', "GET /private (login restricted)" )
+      or diag explain $trap->read;
 
     $mech->base_is( 'http://localhost/login?return_url=%2Fprivate',
         "Redirected to /login" );
@@ -300,7 +319,7 @@ test 'route tests' => sub {
 
     # bad login
 
-    $self->trap->read;    # clear logs
+    $trap->read;    # clear logs
 
     $mech->post_ok(
         '/login',
@@ -313,13 +332,14 @@ test 'route tests' => sub {
 
     $mech->content_like( qr/Login form/, 'got login page' );
 
-    $log = $self->trap->read;
+    $log = $trap->read;
     cmp_deeply(
         $log,
         superbagof(
             {
-                level   => "debug",
-                message => "Authentication failed for testuser"
+                formatted => ignore(),
+                level     => "debug",
+                message   => "Authentication failed for testuser"
             }
         ),
         "Check auth failed debug message"
@@ -331,6 +351,7 @@ test 'route tests' => sub {
 
     $mech->content_is( 'undef', "content is 'undef'" );
 
+    $trap->read;
     $mech->post_ok(
         '/login',
         {
@@ -339,19 +360,29 @@ test 'route tests' => sub {
         },
         "POST /login with good password"
     );
-    $mech->base_is( 'http://localhost/', "Redirected to /" );
+    $mech->base_is( 'http://localhost/', "Redirected to /" )
+      or diag explain $trap->read;
 
-    $log = $self->trap->read;
+    $log = $trap->read;
     cmp_deeply(
         $log,
         superbagof(
-            { level => "debug", message => re('Change users_id') },
-            { level => "debug", message => "users accepted user customer1" },
+            {
+                formatted => ignore(),
+                level     => "debug",
+                message   => re('Change users_id')
+            },
+            {
+                formatted => ignore(),
+                level     => "debug",
+                message   => "users accepted user customer1"
+            },
         ),
         "users_id set in debug logs and login successful"
     ) or diag explain $log;
 
-    $mech->get_ok( '/current_user', 'GET /current_user' );
+    $mech->get_ok( '/current_user', 'GET /current_user' )
+      or diag explain $trap->read;
 
     $mech->content_is( 'Customer One', "content is 'Customer One'" );
 
@@ -368,16 +399,22 @@ test 'route tests' => sub {
 
     # price modifiers
 
-    lives_ok( sub { $user = $self->users->find( { username => 'customer1' } ) },
-        "grab customer1 fom db" );
+    lives_ok(
+        sub {
+            $user =
+              $schema->resultset('User')->find( { username => 'customer1' } );
+        },
+        "grab customer1 fom db"
+    );
 
     cmp_ok( $user->roles->count, "==", 1, "user has 1 role" );
 
+    $trap->read;
     $mech->post_ok(
         '/cart',
         { sku => 'os28005', quantity => 5 },
         "POST /cart add 5 Trim Brushes"
-    );
+    ) or diag explain $trap->read;
 
     $mech->content_like( qr/cart_subtotal="92.95"/, 'cart_subtotal is 92.95' );
 
@@ -541,49 +578,40 @@ test 'route tests' => sub {
 
     cmp_deeply \@carts,
       [
-        {
-            'cart_products' => bag(
-                {
-                    'cart_position'    => 0,
-                    'cart_products_id' => ignore(),
-                    'carts_id'         => ignore(),
-                    'created'          => ignore(),
-                    'last_modified'    => ignore(),
-                    'quantity'         => 2,
-                    'sku'              => 'os28004-CAM-WHT',
-                    'combine'          => ignore(),
-                    'extra'            => ignore(),
-                },
-                {
-                    'cart_position'    => 0,
-                    'cart_products_id' => ignore(),
-                    'carts_id'         => ignore(),
-                    'created'          => ignore(),
-                    'last_modified'    => ignore(),
-                    'quantity'         => 1,
-                    'sku'              => 'os28004-CAM-BLK',
-                    'combine'          => ignore(),
-                    'extra'            => ignore(),
-                }
-            ),
-            'carts_id'      => ignore(),
-            'created'       => ignore(),
-            'last_modified' => ignore(),
-            'name'          => 'main',
-            'sessions_id'   => undef,
-            'users_id'      => re(qr/\d/),
-        },
-        {
-            'cart_products' => [],
-            'carts_id'      => ignore(),
-            'created'       => ignore(),
-            'last_modified' => ignore(),
-            'name'          => 'main',
-            'sessions_id'   => re(qr/\w/),
-            'users_id'      => undef
-        }
+        superhashof(
+            {
+                'cart_products' => bag(
+                    superhashof(
+                        {
+                            'cart_position' => 0,
+                            'quantity'      => 2,
+                            'sku'           => 'os28004-CAM-WHT'
+                        }
+                    ),
+                    superhashof(
+                        {
+                            'cart_position' => 0,
+                            'quantity'      => 1,
+                            'sku'           => 'os28004-CAM-BLK'
+                        }
+                    ),
+                ),
+                'name'        => 'main',
+                'sessions_id' => undef,
+                'users_id'    => re(qr/\d/),
+            }
+        ),
+        superhashof(
+            {
+                'cart_products' => [],
+                'name'          => 'main',
+                'sessions_id'   => re(qr/\w/),
+                'users_id'      => undef
+            }
+        ),
       ],
-      "carts contents are as we expect" or diag explain @carts;
+      "carts contents are as we expect"
+      or diag explain @carts;
 
     $mech->content_like( qr/cart_subtotal="0\.00/, 'cart_subtotal is 0.00' );
 
@@ -593,7 +621,7 @@ test 'route tests' => sub {
         "POST /cart add Ergo Roller camel white"
     );
 
-    $self->trap->read;
+    $trap->read;
     $mech->post_ok(
         '/login',
         {
@@ -601,7 +629,7 @@ test 'route tests' => sub {
             password => 'c1passwd'
         },
         "POST /login with good password"
-    ) or diag explain $self->trap->read;
+    ) or diag explain $trap->read;
 
     cmp_ok $schema->resultset('Cart')->count, '==', 1, "1 cart in the db";
 
@@ -615,38 +643,29 @@ test 'route tests' => sub {
 
     cmp_deeply \@carts,
       [
-        {
-            'cart_products' => bag(
-                {
-                    'cart_position'    => 0,
-                    'cart_products_id' => ignore(),
-                    'carts_id'         => ignore(),
-                    'created'          => ignore(),
-                    'last_modified'    => ignore(),
-                    'quantity'         => 3,
-                    'sku'              => 'os28004-CAM-WHT',
-                    'combine'          => ignore(),
-                    'extra'            => ignore(),
-                },
-                {
-                    'cart_position'    => 0,
-                    'cart_products_id' => ignore(),
-                    'carts_id'         => ignore(),
-                    'created'          => ignore(),
-                    'last_modified'    => ignore(),
-                    'quantity'         => 1,
-                    'sku'              => 'os28004-CAM-BLK',
-                    'combine'          => ignore(),
-                    'extra'            => ignore(),
-                }
-            ),
-            'carts_id'      => ignore(),
-            'created'       => ignore(),
-            'last_modified' => ignore(),
-            'name'          => 'main',
-            'sessions_id'   => re(qr/\w/),
-            'users_id'      => re(qr/\d/),
-        },
+        superhashof(
+            {
+                'cart_products' => bag(
+                    superhashof(
+                        {
+                            'cart_position'    => 0,
+                            'quantity'         => 3,
+                            'sku'              => 'os28004-CAM-WHT'
+                        }
+                    ),
+                    superhashof(
+                        {
+                            'cart_position'    => 0,
+                            'quantity'         => 1,
+                            'sku'              => 'os28004-CAM-BLK'
+                        }
+                    ),
+                ),
+                'name'          => 'main',
+                'sessions_id'   => re(qr/\w/),
+                'users_id'      => re(qr/\d/),
+            }
+        ),
       ],
       "carts contents are as we expect" or diag explain @carts;
 
@@ -702,19 +721,23 @@ test 'route tests' => sub {
 
     # inactive product
 
-    lives_ok {$self->ic6s_schema->resultset('Product')->find('os28004')
-      ->update( { active => 0 } ) } "set os28004 to inactive";
+    lives_ok {
+        $schema->resultset('Product')->find('os28004')
+          ->update( { active => 0 } )
+    }
+    "set os28004 to inactive";
 
-    $mech->get( '/os28004' );
+    $mech->get('/os28004');
 
     ok $mech->status eq '404', "os28004 is now 404 not found"
       or diag $mech->status;
 
-    lives_ok {$self->ic6s_schema->resultset('Product')->find('os28004')
-      ->update( { active => 1 } ) } "set os28004 to active again";
+    lives_ok {
+        $schema->resultset('Product')->find('os28004')
+          ->update( { active => 1 } )
+    }
+    "set os28004 to active again";
 
     $mech->get_ok( '/os28004', 'GET /os28004' );
-
-};
-
+}
 1;

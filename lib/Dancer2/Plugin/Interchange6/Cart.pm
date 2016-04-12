@@ -15,18 +15,35 @@ Extends L<Interchange6::Cart> to tie cart to L<Interchange6::Schema::Result::Car
 use strict;
 use warnings;
 
-use Moo;
-use MooseX::CoverableModifiers;
 use Interchange6::Types -types;
+use MooseX::CoverableModifiers;
+use Module::Runtime 'use_module';
 
+use Moo;
 extends 'Interchange6::Cart';
-
 use namespace::clean;
 
 =head1 ATTRIBUTES
 
 See L<Interchange6::Cart/ATTRIBUTES> for a full list of attributes
 inherited by this module.
+
+=head2 app
+
+Dancer2 app instance.
+
+=cut
+
+has plugin => (
+    is => 'ro',
+    required => 1,
+);
+
+has app => (
+    is       => 'ro',
+    lazy => 1,
+    default => sub { $_[0]->plugin->app },
+);
 
 =head2 database
 
@@ -63,11 +80,13 @@ sub _build_dbic_cart {
     );
 
     if ( $cart->in_storage ) {
-        debug( "Existing cart: ", $cart->carts_id, " ", $cart->name, "." );
+        $self->app->log( 'debug', "Existing cart: ",
+            $cart->carts_id, " ", $cart->name, "." );
     }
     else {
         $cart->insert;
-        debug( "New cart ", $cart->carts_id, " ", $cart->name, "." );
+        $self->app->log( 'debug', "New cart ", $cart->carts_id, " ",
+            $cart->name, "." );
     }
     return $cart;
 }
@@ -99,12 +118,9 @@ DBIC schema for L</database>.
 =cut
 
 has schema => (
-    is => 'lazy',
+    is       => 'ro',
+    required => 1,
 );
-
-sub _build_schema {
-    return shift->dbic_cart->result_source->schema($self->database);
-}
 
 =head2 id
 
@@ -124,12 +140,12 @@ sub _build_id {
 
 =head2 product_class
 
-Inherited. Change default to L<Dancer::Plugin::Interchange6::Cart::Product>.
+Inherited. Default is L<Dancer2::Plugin::Interchange6::Cart::Product>.
 
 =cut
 
 has '+product_class' => (
-    default => 'Dancer::Plugin::Interchange6::Cart::Product',
+    default => __PACKAGE__ . '::Product',
 );
 
 =head2 sessions_id
@@ -141,12 +157,9 @@ Defaults to C<< session->id >>.
 =cut
 
 has '+sessions_id' => (
-    is => 'lazy',
+    is       => 'ro',
+    required => 1,
 );
-
-sub _build_sessions_id {
-    return session->id;
-}
 
 =head1 METHODS
 
@@ -215,7 +228,8 @@ around 'add' => sub {
     # convert to array reference if we don't already have one
     $args = [$args] unless ref($args) eq 'ARRAY';
 
-    execute_hook( 'before_cart_add_validate', $self, $args );
+    $self->plugin->execute_plugin_hook( 'before_cart_add_validate', $self,
+        $args );
 
     # basic validation + add each validated arg to @args
 
@@ -248,7 +262,7 @@ around 'add' => sub {
         push @products, $product;
     }
 
-    execute_hook( 'before_cart_add', $self, \@products );
+    $self->plugin->execute_plugin_hook( 'before_cart_add', $self, \@products );
 
     # add products to cart
 
@@ -279,7 +293,7 @@ around 'add' => sub {
         push @ret, $ret;
     }
 
-    execute_hook( 'after_cart_add', $self, \@ret );
+    $self->plugin->execute_plugin_hook( 'after_cart_add', $self, \@ret );
 
     return wantarray ? @ret : \@ret;
 };
@@ -293,14 +307,14 @@ Removes all products from the cart.
 around clear => sub {
     my ( $orig, $self ) = @_;
 
-    execute_hook( 'before_cart_clear', $self );
+    $self->plugin->execute_plugin_hook( 'before_cart_clear', $self );
 
     $orig->( $self, @_ );
 
     # delete all products from this cart
     $self->dbic_cart_products->delete_all;
 
-    execute_hook( 'after_cart_clear', $self );
+    $self->plugin->execute_plugin_hook( 'after_cart_clear', $self );
 
     return;
 };
@@ -388,19 +402,20 @@ the product.
 around remove => sub {
     my ( $orig, $self, $arg ) = @_;
 
-    execute_hook( 'before_cart_remove_validate', $self, $arg );
+    $self->plugin->execute_plugin_hook( 'before_cart_remove_validate', $self,
+        $arg );
 
     my $index = $self->product_index( sub { $_->sku eq $arg } );
 
     die "Product sku not found in cart: $arg." unless $index >= 0;
 
-    execute_hook( 'before_cart_remove', $self, $arg );
+    $self->plugin->execute_plugin_hook( 'before_cart_remove', $self, $arg );
 
     my $ret = $orig->( $self, $arg );
 
     $self->dbic_cart_products->search( { 'me.sku' => $ret->sku } )->delete;
 
-    execute_hook( 'after_cart_remove', $self, $arg );
+    $self->plugin->execute_plugin_hook( 'after_cart_remove', $self, $arg );
 
     return $ret;
 };
@@ -420,13 +435,15 @@ around rename => sub {
 
     my $old_name = $self->name;
 
-    execute_hook( 'before_cart_rename', $self, $old_name, $new_name );
+    $self->plugin->execute_plugin_hook( 'before_cart_rename',
+        $self, $old_name, $new_name );
 
     my $ret = $orig->( $self, $new_name );
 
     $self->dbic_cart->update( { name => $ret } );
 
-    execute_hook( 'after_cart_rename', $self, $old_name, $ret );
+    $self->plugin->execute_plugin_hook( 'after_cart_rename',
+        $self, $old_name, $ret );
 
     return $ret;
 };
@@ -450,15 +467,18 @@ Writer method for L<Interchange6::Cart/sessions_id>.
 around set_sessions_id => sub {
     my ( $orig, $self, $arg ) = @_;
 
-    execute_hook( 'before_cart_set_sessions_id', $self, $arg );
+    $self->plugin->execute_plugin_hook( 'before_cart_set_sessions_id', $self,
+        $arg );
 
     my $ret = $orig->( $self, $arg );
 
-    debug( "Change sessions_id of cart " . $self->id . " to: ", $arg );
+    $self->app->log( 'debug',
+        "Change sessions_id of cart " . $self->id . " to: ", $arg );
 
     $self->dbic_cart->update({ sessions_id => $arg });
 
-    execute_hook( 'after_cart_set_sessions_id', $ret, $arg );
+    $self->plugin->execute_plugin_hook( 'after_cart_set_sessions_id', $ret,
+        $arg );
 
     return $ret;
 };
@@ -472,15 +492,17 @@ Writer method for L<Interchange6::Cart/users_id>.
 around set_users_id => sub {
     my ( $orig, $self, $arg ) = @_;
 
-    execute_hook( 'before_cart_set_users_id', $self, $arg );
+    $self->plugin->execute_plugin_hook( 'before_cart_set_users_id', $self,
+        $arg );
 
-    debug("Change users_id of cart " . $self->id . " to: $arg");
+    $self->app->log( 'debug',
+        "Change users_id of cart " . $self->id . " to: $arg" );
 
     my $ret = $orig->( $self, $arg );
 
     $self->dbic_cart->update( { users_id => $arg } );
 
-    execute_hook( 'after_cart_set_users_id', $ret, $arg );
+    $self->plugin->execute_plugin_hook( 'after_cart_set_users_id', $ret, $arg );
 
     return $ret;
 };
@@ -524,13 +546,15 @@ around update => sub {
             next ARGS;
         }
 
-        execute_hook( 'before_cart_update', $self, $sku, $qty );
+        $self->plugin->execute_plugin_hook( 'before_cart_update',
+            $self, $sku, $qty );
 
         my ($ret) = $orig->( $self, $sku => $qty );
 
         $self->_find_and_update( $sku, { quantity => $qty } );
 
-        execute_hook( 'after_cart_update', $ret, $sku, $qty );
+        $self->plugin->execute_plugin_hook( 'after_cart_update',
+            $ret, $sku, $qty );
     }
 };
 

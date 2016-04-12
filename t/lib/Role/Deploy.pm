@@ -8,14 +8,18 @@ Role::Deploy
 
 BEGIN {
     use Cwd;
+    $ENV{DANCER_CONFDIR} = Cwd::abs_path('t');
     $ENV{DANCER_APPDIR} = Cwd::abs_path('t');
 }
 
 use Test::Exception;
 use Test::More;
 use Test::WWW::Mechanize::PSGI;
+use lib 't';
+use TestApp;
 
-use Dancer2 qw/load_app set setting/;
+use Dancer2 appname => 'TestApp';
+use Dancer2::Plugin::DBIC;
 
 use Test::Roo::Role;
 
@@ -31,12 +35,7 @@ has mech => (
     is      => 'ro',
     default => sub {
         Test::WWW::Mechanize::PSGI->new(
-            app => sub {
-                my $env = shift;
-                load_app 'TestApp';
-                my $request = Dancer2::Request->new( env => $env );
-                Dancer2->dance($request);
-            }
+            app => TestApp->to_app
         );
     },
 );
@@ -50,7 +49,7 @@ defaults to C<< Dancer2::Logger::Capture->trap >>
 has trap => (
     is => 'ro',
     default =>
-      sub { require Dancer2::Logger::Capture; Dancer2::Logger::Capture->trap },
+      sub { require Dancer2::Logger::Capture::Trap; Dancer2::Logger::Capture::Trap->new },
 );
 
 test 'deploy tests' => sub {
@@ -68,10 +67,11 @@ test 'deploy tests' => sub {
             connect_info => [ $self->connect_info ],
         }
     };
-    my $schema = $self->ic6s_schema;
+    #my $schema = $self->ic6s_schema;
 
-    set session => 'DBIC';
-    set session_options => { schema => $schema, };
+    #set session => 'DBIC';
+    #set session_options => { schema => $schema, };
+    my $schema = schema;
 
     # deploy magically happens in here:
     lives_ok { $self->load_all_fixtures } "load all fixtures";
