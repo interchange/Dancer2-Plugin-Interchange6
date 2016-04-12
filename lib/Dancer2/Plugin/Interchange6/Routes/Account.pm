@@ -35,7 +35,7 @@ sub account_routes {
 
         my %values;
 
-        if ( $app->request->vars->{login_failed} ) {
+        if ( $app->request->param('login_failed') ) {
             $values{error} = "Login failed";
         }
 
@@ -109,11 +109,13 @@ sub account_routes {
                 $app->request->params->{username}
             );
 
-            $app->request->var( login_failed => 1 );
             return $app->forward(
                 $login_route,
-                { return_url => $app->request->params->{return_url} },
-                { method     => 'get' }
+                {
+                    return_url   => $app->request->params->{return_url},
+                    login_failed => 1
+                },
+                { method => 'get' }
             );
         }
     };
