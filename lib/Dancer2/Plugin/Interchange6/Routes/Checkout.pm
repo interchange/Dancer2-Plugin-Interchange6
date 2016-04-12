@@ -20,26 +20,26 @@ Returns the checkout route based on the passed routes configuration.
 =cut
 
 sub checkout_route {
-    my $app = shift;
-    my $routes_config = shift;
-    my $d2pic6 = $app->with_plugin('Dancer2::Plugin::Interchange6');
+    my $plugin = shift;
 
     return sub {
-        my %values;
+        my $app = shift;
 
         # add stuff useful for cart display
-        my $cart = $d2pic6->cart;
-        $values{cart_subtotal} = $cart->subtotal;
-        $values{cart_total} = $cart->total;
-        $values{cart} = $cart->products;
+        my $cart   = $plugin->shop_cart;
+        my $values = {
+            cart_subtotal => $cart->subtotal,
+            cart_total    => $cart->total,
+            cart          => $cart->products,
+        };
 
         # call before_checkout_display route so template tokens
         # can be injected
         $app->execute_hook( 'plugin.interchange6.before_checkout_display',
-            \%values );
+            $values );
 
-        $app->template( $routes_config->{checkout}->{template}, \%values );
-    }
+        $app->template( $plugin->checkout_template, $values );
+    };
 }
 
 1;
