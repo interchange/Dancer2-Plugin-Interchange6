@@ -5,15 +5,11 @@ use Test::More;
 use Test::Deep;
 use Test::Exception;
 
-use Dancer2 qw/set/;
+use Dancer2;
 use Dancer2::Plugin::Interchange6::Business::OnlinePayment;
 use lib 't/lib';
 
-set log    => 'debug';
-set logger => 'capture';
-
 my ( $bop, $log );
-my $trap = Dancer2::Logger::Capture->trap;
 
 lives_ok {
     $bop =
@@ -41,18 +37,6 @@ ok !$bop->is_success, "is_success is false";
 cmp_ok $bop->error_code,    'eq', 'declined',    "error code declined";
 cmp_ok $bop->error_message, 'eq', 'invalid cvc', "error_message invalid cvc";
 
-$log = $trap->read;
-cmp_deeply(
-    $log,
-    superbagof(
-        {
-            level   => "debug",
-            message => "Card was rejected by MockFail: invalid cvc",
-        }
-    ),
-    "got expected debug messages"
-) or diag explain $log;
-
 lives_ok {
     $bop =
       Dancer2::Plugin::Interchange6::Business::OnlinePayment->new( 'MockSuccess')
@@ -65,22 +49,6 @@ ok $bop->is_success,        "is_success is true";
 cmp_ok $bop->authorization, '==', 1, "we have authorization == 1";
 cmp_ok $bop->order_number,  '==', 1001, "we have order_number = 1001";
 
-$log = $trap->read;
-cmp_deeply(
-    $log,
-    superbagof(
-        {
-            level   => "debug",
-            message => "Successful payment, authorization: 1",
-        },
-        {
-            level   => "debug",
-            message => "Order number: 1001",
-        },
-    ),
-    "got expected debug messages"
-) or diag explain $log;
-
 lives_ok {
     $bop =
       Dancer2::Plugin::Interchange6::Business::OnlinePayment->new( 'MockPopup',
@@ -91,18 +59,5 @@ lives_ok {
 lives_ok { $bop->charge( amount => 1 ) } "charge lives";
 
 ok $bop->is_success, "is_success is true";
-
-$log = $trap->read;
-cmp_deeply(
-    $log,
-    superbagof(
-        {
-            level => "debug",
-            message =>
-              "Success!  Redirect browser to http://localhost/payment_popup",
-        },
-    ),
-    "got expected debug messages"
-) or diag explain $log;
 
 done_testing();
