@@ -17,6 +17,7 @@ WriteMakefile(
                             'Class::Load' => 0,
                             'File::Temp' => 0,
                             'Interchange6::Schema::Test' => 0,
+                            'Module::Find' => 0,
                             'Test::More' => 0,
                             'Test::Deep' => 0,
                             'Test::Exception' => 0,
