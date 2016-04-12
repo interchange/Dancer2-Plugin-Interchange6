@@ -28,9 +28,9 @@ use namespace::clean;
 See L<Interchange6::Cart/ATTRIBUTES> for a full list of attributes
 inherited by this module.
 
-=head2 app
+=head2 plugin
 
-Dancer2 app instance.
+Dancer2::Plugin::Interchange6 plugin instance.
 
 =cut
 
@@ -38,6 +38,12 @@ has plugin => (
     is => 'ro',
     required => 1,
 );
+
+=head2
+
+Dancer2 app instance for L</plugin>.
+
+=cut
 
 has app => (
     is       => 'ro',

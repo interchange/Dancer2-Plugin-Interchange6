@@ -122,9 +122,29 @@ to retrieve a single object or the corresponding result set.
     shop_navigation->search({type => 'manufacturer',
                              active => 1});
 
-Available accessors are C<shop_address>, C<shop_attribute>, C<shop_country>,
-C<shop_message>, C<shop_navigation>, C<shop_order>, C<shop_product>,
-C<shop_state> and C<shop_user>.
+Available accessors are:
+
+=over
+
+=item C<shop_address>
+
+=item C<shop_attribute>
+
+=item C<shop_country>
+
+=item C<shop_message>
+
+=item C<shop_navigation>
+
+=item C<shop_order>
+
+=item C<shop_product>
+
+=item C<shop_state>
+
+=item C<shop_user>
+
+=back
 
 =head1 HOOKS
 

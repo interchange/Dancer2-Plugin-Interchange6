@@ -9,7 +9,7 @@ use Dancer2::Plugin::Interchange6::Routes::Checkout;
 
 Dancer2::Plugin::Interchange6::Routes - Routes for Interchange6 Shop Machine
 
-=head2 ROUTES
+=head2 shop_setup_routes
 
 The following routes are provided by this plugin.
 
