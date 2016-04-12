@@ -1,13 +1,14 @@
 package Test::Shop;
 
+use strict;
+use warnings;
+
 use Test::Exception;
 use Test::More;
+use Dancer2 '!pass', appname => 'TestApp';
 use Dancer2::Plugin::Interchange6;
 
-use Test::Roo::Role;
-
-test 'misc shop tests' => sub {
-    my $self = shift;
+sub run_tests {
 
     diag "Test::Shop";
 
@@ -70,6 +71,6 @@ test 'misc shop tests' => sub {
 
     cmp_ok( shop_message->count, '==', $message_count,
         "$message_count Message rows" );
-};
+}
 
 1;
