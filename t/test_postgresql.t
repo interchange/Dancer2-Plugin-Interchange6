@@ -19,7 +19,7 @@ BEGIN {
 
 use lib 't/lib';
 use File::Temp;
-use File::Temp;
+use Module::Find;
 use TestApp;
 use Deploy;
 
