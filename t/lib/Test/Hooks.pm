@@ -444,7 +444,7 @@ sub run_tests {
                 superhashof({
                     level   => 'debug',
                     message => re(
-                        qr/hook before_cart_set_sessions_id main 8.99 \w+ $id/),
+                        qr/hook before_cart_set_sessions_id main 8.99 \S+ $id/),
                 }),
                 superhashof({
                     level   => 'debug',
@@ -452,7 +452,7 @@ sub run_tests {
                 }),
             ),
             "check debug logs"
-        ) or diag explain $logs;
+        ) or diag explain "id: $id, logs: ", $logs;
 
     };
 }
