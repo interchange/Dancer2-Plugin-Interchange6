@@ -18,11 +18,12 @@ BEGIN {
 }
 
 use lib 't/lib';
+use File::Temp;
+use File::Temp;
 use TestApp;
-use Test::Deploy;
+use Deploy;
 
 use Dancer2 appname => 'TestApp';
-use File::Temp;
 
 my $tempdir = File::Temp::tempdir(
     CLEANUP  => 1,
@@ -31,16 +32,27 @@ my $tempdir = File::Temp::tempdir(
 );
 
 no warnings 'once';    # prevent: "Test::PostgreSQL::errstr" used only once
-my $pgsql = Test::PostgreSQL->new(
-    base_dir => $tempdir,
-) or plan skip_all => "Test::PostgreSQL died: " . $Test::PostgreSQL::errstr;
+my $pgsql = Test::PostgreSQL->new( base_dir => $tempdir, )
+  or plan skip_all => "Test::PostgreSQL died: " . $Test::PostgreSQL::errstr;
 use warnings 'once';
 
 my $dsn = $pgsql->dsn( dbname => 'test' );
 
-Test::Deploy::deploy($dsn);
-Test::Cart::run_tests();
-Test::DSL::run_tests();
-Test::Routes::run_tests();
+Deploy::deploy($dsn);
+
+my @test_classes;
+if ( $ENV{TEST_CLASS_ONLY} ) {
+    push @test_classes, map { "Test::$_" } split( /,/, $ENV{TEST_CLASS_ONLY} );
+}
+else {
+    my @old_inc = @INC;
+    setmoduledirs('t/lib');
+    @test_classes = sort { $a cmp $b } findsubmod Test;
+    setmoduledirs(@old_inc);
+}
+foreach my $class (@test_classes) {
+    eval "use $class";
+    $class->run_tests();
+}
 
 done_testing;

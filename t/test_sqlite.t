@@ -1,18 +1,19 @@
 use strict;
 use warnings;
 
+use Test::More;
+
 BEGIN {
     $ENV{DANCER_ENVIRONMENT} = 'sqlite';
 }
 
-use Test::More;
-
 use lib 't/lib';
+use File::Temp;
+use Module::Find;
 use TestApp;
-use Test::Deploy;
+use Deploy;
 
 use Dancer2 appname => 'TestApp';
-use File::Temp;
 
 my $tempfile = File::Temp->new(
     TEMPLATE => 'ic6s_test_XXXXX',
@@ -22,9 +23,21 @@ my $tempfile = File::Temp->new(
 my $dbfile = $tempfile->filename;
 my $dsn = "dbi:SQLite:dbname=$dbfile";
 
-Test::Deploy::deploy($dsn);
-Test::Cart::run_tests();
-Test::DSL::run_tests();
-Test::Routes::run_tests();
+Deploy::deploy($dsn);
+
+my @test_classes;
+if ( $ENV{TEST_CLASS_ONLY} ) {
+    push @test_classes, map { "Test::$_" } split(/,/, $ENV{TEST_CLASS_ONLY});
+}
+else {
+    my @old_inc = @INC;
+    setmoduledirs( 't/lib' );
+    @test_classes = sort { $a cmp $b } findsubmod Test;
+    setmoduledirs(@old_inc);
+}
+foreach my $class ( @test_classes ) {
+    eval "use $class";
+    $class->run_tests()
+}
 
 done_testing;

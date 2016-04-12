@@ -9,7 +9,7 @@ use Dancer2 '!pass', appname => 'TestApp';
 use Dancer2::Plugin::DBIC;
 
 sub deploy {
-    diag "Test::Deploy";
+    diag "Deploy";
 
     my $dsn = shift;
     my $config = config;
