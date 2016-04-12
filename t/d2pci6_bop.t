@@ -1,6 +1,10 @@
 use strict;
 use warnings;
 
+BEGIN {
+    $ENV{DANCER_CONFDIR} = 't';
+}
+
 use Test::More;
 use Test::Deep;
 use Test::Exception;
