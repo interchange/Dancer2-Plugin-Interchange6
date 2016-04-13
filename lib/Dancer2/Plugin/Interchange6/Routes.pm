@@ -298,14 +298,15 @@ has plugin_interchange6 => (
     default => sub {
         $_[0]->app->with_plugin('Dancer2::Plugin::Interchange6');
     },
-    handles => {
-        shop_cart       => 'shop_cart',
-        shop_navigation => 'shop_navigation',
-        shop_product    => 'shop_product',
-        shop_redirect   => 'shop_redirect',
-        shop_schema     => 'shop_schema',
-        shop_user       => 'shop_user',
-    },
+    handles => [
+        'shop_address',    'shop_attribute',
+        'shop_cart',       'shop_charge',
+        'shop_country',    'shop_message',
+        'shop_navigation', 'shop_order',
+        'shop_product',    'shop_redirect',
+        'shop_schema',     'shop_state',
+        'shop_user',
+    ],
 );
 
 # other attributes
