@@ -120,29 +120,6 @@ sub run_tests {
 
     };
 
-    subtest 'shop_redirect' => sub {
-        ok(1);
-        return;
-
-        my ( $result, $code );
-
-        lives_ok { $result = shop_redirect } "shop_redirect lives";
-
-        ok !defined $result, "result is undef";
-
-        lives_ok { $result = shop_redirect('bad_uri_1') }
-        "shop_redirect('bad_uri_1') in scalar context lives";
-
-        cmp_ok $result->[0], 'eq', 'correct_uri_1', 'result is correct_uri_1';
-        cmp_ok $result->[1], 'eq', '301',           'code is 301';
-
-        lives_ok { ( $result, $code ) = shop_redirect('bad_uri_1') }
-        "shop_redirect('bad_uri_1') in list context lives";
-
-        cmp_ok $result, 'eq', 'correct_uri_1', 'result is correct_uri_1';
-        cmp_ok $code,   'eq', '301',           'code is 301';
-    };
-
     subtest 'shop_address' => sub {
 
         my $result;
