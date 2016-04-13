@@ -2,287 +2,324 @@ package Test::DSL;
 
 use Test::Exception;
 use Test::More;
+use Test::WWW::Mechanize::PSGI;
+
 use Dancer2 appname => 'TestApp';
 use Dancer2::Plugin::Interchange6;
 
+my $app  = dancer_app;
+my $trap = $app->logger_engine->trapper;
+
+my $mech = Test::WWW::Mechanize::PSGI->new( app => TestApp->to_app );
+
 sub run_tests {
-subtest 'shop_schema' => sub {
+    subtest 'shop_schema' => sub {
 
-    diag "Test::DSL";
+        diag "Test::DSL";
 
-    my $schema;
+        my $schema;
 
-    lives_ok { $schema = shop_schema } "shop_schema lives";
+        lives_ok { $schema = shop_schema } "shop_schema lives";
 
-    isa_ok $schema, "DBIx::Class::Schema";
+        isa_ok $schema, "DBIx::Class::Schema";
 
-    lives_ok { $schema = shop_schema('shop2') } "shop_schema('shop2') lives";
+        lives_ok { $schema = shop_schema('shop2') }
+        "shop_schema('shop2') lives";
 
-    isa_ok $schema, "DBIx::Class::Schema";
+        isa_ok $schema, "DBIx::Class::Schema";
 
-    throws_ok { $schema = shop_schema('bad') }
-    qr/The schema bad is not configured/,
-      "shop_schema('bad') dies";
-};
+        throws_ok { $schema = shop_schema('bad') }
+        qr/The schema bad is not configured/, "shop_schema('bad') dies";
+    };
 
-subtest 'shop_cart' => sub {
-    ok 1;
-    return;
+    subtest 'shop_cart' => sub {
+        ok 1;
+        return;
 
-    my $cart;
+        my $cart;
 
-    lives_ok { $cart = shop_cart } "shop_cart lives";
+        lives_ok { $cart = shop_cart } "shop_cart lives";
 
-    isa_ok $cart, "Dancer2::Plugin::Interchange6::Cart";
+        isa_ok $cart, "Dancer2::Plugin::Interchange6::Cart";
 
-    cmp_ok $cart->name, 'eq', 'main', 'name is main';
+        cmp_ok $cart->name, 'eq', 'main', 'name is main';
 
-    lives_ok { $cart = shop_cart('test') } "shop_cart('test') lives";
+        lives_ok { $cart = shop_cart('test') } "shop_cart('test') lives";
 
-    isa_ok $cart, "Dancer2::Plugin::Interchange6::Cart";
+        isa_ok $cart, "Dancer2::Plugin::Interchange6::Cart";
 
-    cmp_ok $cart->name, 'eq', 'test', 'name is test';
+        cmp_ok $cart->name, 'eq', 'test', 'name is test';
 
-    lives_ok { $cart = cart } "cart lives";
+        lives_ok { $cart = cart } "cart lives";
 
-    isa_ok $cart, "Dancer2::Plugin::Interchange6::Cart";
+        isa_ok $cart, "Dancer2::Plugin::Interchange6::Cart";
 
-    cmp_ok $cart->name, 'eq', 'main', 'name is main';
+        cmp_ok $cart->name, 'eq', 'main', 'name is main';
 
-    lives_ok { $cart = cart('test') } "cart('test') lives";
+        lives_ok { $cart = cart('test') } "cart('test') lives";
 
-    isa_ok $cart, "Dancer2::Plugin::Interchange6::Cart";
+        isa_ok $cart, "Dancer2::Plugin::Interchange6::Cart";
 
-    cmp_ok $cart->name, 'eq', 'test', 'name is test';
-};
+        cmp_ok $cart->name, 'eq', 'test', 'name is test';
+    };
 
-subtest 'shop_charge' => sub {
-    ok 1;
-    return;
+    subtest 'shop_charge' => sub {
 
-    my $charge;
-    my $paymentorder_rset = shop_schema->resultset('PaymentOrder');
+        my $paymentorder_rset = shop_schema->resultset('PaymentOrder');
 
-    lives_ok { $paymentorder_rset->delete_all }
-    "delete existing payment orders";
+        lives_ok { $paymentorder_rset->delete_all }
+        "delete existing payment orders";
 
-    throws_ok { $charge = shop_charge( provider => "BadProvider" ) }
-    qr/Settings for provider BadProvider missing/,
-      "shop_charge with bad provider dies";
+        # test with various bad (or no) args
 
-    throws_ok { $charge = shop_charge } qr/Exception/,
-      "shop_charge with default provider but no amount dies";
+        lives_ok { $mech->post('/shop_charge') }
+        'shop_charge with no args dies';
 
-    lives_ok { $charge = shop_charge( amount => 1 ) }
-      "shop_charge with default provider and amount lives";
+        cmp_ok $mech->status, 'eq', '500', 'status is 500';
 
-    ok $charge->is_success,           "charge was successful";
-    cmp_ok $charge->authorization,    '==', 1, "got authorization";
-    cmp_ok $charge->order_number,     '==', 1001, "got order_number";
-    cmp_ok $paymentorder_rset->count, '==', 1, "1 payment order in db";
-    isa_ok $charge->payment_order,
-      "Interchange6::Schema::Result::PaymentOrder", "payment_order";
-    ok $charge->payment_order->in_storage, "payment_order is in_storage";
-    cmp_ok $charge->payment_order->status, 'eq', 'success',
-      "payment_order status eq success";
+        lives_ok {
+            $mech->post( '/shop_charge', { provider => "BadProvider" } )
+        }
+        'shop_charge with bad provider dies';
 
-    lives_ok { $charge = shop_charge( amount => 1, provider => 'MockSuccess' ) }
-    "shop_charge with MockSuccess provider and amount lives";
+        cmp_ok $mech->status, 'eq', '500', 'status is 500';
 
-    ok $charge->is_success, "charge was successful";
-    cmp_ok $charge->authorization, '==', 2, "got authorization";
-    cmp_ok $charge->order_number, '==', 1002, "got order_number";
-    cmp_ok $paymentorder_rset->count, '==', 2, "2 payment orders in db";
+        like $mech->content, qr/Settings for provider BadProvider missing/,
+        "error contains Settings for provider BadProvider missing";
 
-    lives_ok { $charge = shop_charge( amount => 1, provider => 'MockFail' ) }
-    "shop_charge with MockFail provider and amount lives";
+        $mech->post_ok(
+            '/shop_charge',
+            { amount => 1 },
+            "shop_charge { amount => 1 }"
+        );
+        
+        $mech->content_like(
+            qr/1,\d+,\d+,Interchange6::Schema::Result::PaymentOrder,1,success/,
+            "charge and payment order are good" );
 
-    cmp_ok $paymentorder_rset->count, '==', 3, "3 payment orders in db";
-    cmp_ok $charge->payment_order->status, 'eq', 'failure',
-      "payment_order status eq failure";
+        cmp_ok $paymentorder_rset->count, '==', 1, "1 payment order in db";
 
-    throws_ok { $charge = shop_charge( amount => 1, provider => 'MockDie' ) }
-    qr/Payment with provider MockDie failed/,
-    "shop_charge with MockDie provider dies";
+        $mech->post_ok(
+            '/shop_charge',
+            { amount => 1, provider => 'MockSuccess' },
+            "shop_charge { amount => 1, provider => 'MockSuccess' }"
+        );
+        
+        $mech->content_like(
+            qr/1,\d+,\d+,Interchange6::Schema::Result::PaymentOrder,1,success/,
+            "charge and payment order are good" );
 
-    cmp_ok $paymentorder_rset->count, '==', 4, "4 payment orders in db";
+        cmp_ok $paymentorder_rset->count, '==', 2, "2 payment orders in db";
 
-};
+        $mech->post_ok(
+            '/shop_charge',
+            { amount => 1, provider => 'MockFail' },
+            "shop_charge { amount => 1, provider => 'MockFail' }"
+        );
+        
+        $mech->content_like(
+            qr/0,,,Interchange6::Schema::Result::PaymentOrder,1,failure/,
+            "charge and payment order are good" );
 
-subtest 'shop_redirect' => sub {
-    ok(1);
-    return;
+        cmp_ok $paymentorder_rset->count, '==', 3, "3 payment orders in db";
 
-    my ( $result, $code );
+        lives_ok {
+            $mech->post( '/shop_charge',
+                { amount => 1, provider => 'MockDie' } )
+        }
+        "shop_charge { amount => 1, provider => 'MockDie' }";
+        
+        $mech->content_like( qr/Payment with provider MockDie failed/,
+            "error looks good" );
 
-    lives_ok { $result = shop_redirect } "shop_redirect lives";
+        cmp_ok $paymentorder_rset->count, '==', 4, "4 payment orders in db";
 
-    ok !defined $result, "result is undef";
+    };
 
-    lives_ok { $result = shop_redirect('bad_uri_1') }
-    "shop_redirect('bad_uri_1') in scalar context lives";
+    subtest 'shop_redirect' => sub {
+        ok(1);
+        return;
 
-    cmp_ok $result->[0], 'eq', 'correct_uri_1', 'result is correct_uri_1';
-    cmp_ok $result->[1], 'eq', '301',           'code is 301';
+        my ( $result, $code );
 
-    lives_ok { ( $result, $code ) = shop_redirect('bad_uri_1') }
-    "shop_redirect('bad_uri_1') in list context lives";
+        lives_ok { $result = shop_redirect } "shop_redirect lives";
 
-    cmp_ok $result, 'eq', 'correct_uri_1', 'result is correct_uri_1';
-    cmp_ok $code,   'eq', '301',           'code is 301';
-};
+        ok !defined $result, "result is undef";
 
-subtest 'shop_address' => sub {
+        lives_ok { $result = shop_redirect('bad_uri_1') }
+        "shop_redirect('bad_uri_1') in scalar context lives";
 
-    my $result;
+        cmp_ok $result->[0], 'eq', 'correct_uri_1', 'result is correct_uri_1';
+        cmp_ok $result->[1], 'eq', '301',           'code is 301';
 
-    lives_ok { $result = shop_address } "shop_address lives";
+        lives_ok { ( $result, $code ) = shop_redirect('bad_uri_1') }
+        "shop_redirect('bad_uri_1') in list context lives";
 
-    like ref($result), qr/ResultSet/, "returns a ResultSet";
+        cmp_ok $result, 'eq', 'correct_uri_1', 'result is correct_uri_1';
+        cmp_ok $code,   'eq', '301',           'code is 301';
+    };
 
-    cmp_ok $result->count, '>', 0, "we have some addresses";
+    subtest 'shop_address' => sub {
 
-    lives_ok { $result = shop_address->search( undef, { rows => 1 } )->next }
-    "get a random address";
+        my $result;
 
-    isa_ok $result, "Interchange6::Schema::Result::Address", "address";
+        lives_ok { $result = shop_address } "shop_address lives";
 
-    lives_ok { $result = shop_address( $result->id ) }
-    "shop_address find lives";
+        like ref($result), qr/ResultSet/, "returns a ResultSet";
 
-    isa_ok $result, "Interchange6::Schema::Result::Address", "address";
-};
+        cmp_ok $result->count, '>', 0, "we have some addresses";
 
-subtest 'shop_attribute' => sub {
+        lives_ok {
+            $result =
+              shop_address->search( undef, { rows => 1 } )->next
+        }
+        "get a random address";
 
-    my $result;
+        isa_ok $result, "Interchange6::Schema::Result::Address", "address";
 
-    lives_ok { $result = shop_attribute } "shop_attribute lives";
+        lives_ok { $result = shop_address( $result->id ) }
+        "shop_address find lives";
 
-    like ref($result), qr/ResultSet/, "returns a ResultSet";
+        isa_ok $result, "Interchange6::Schema::Result::Address", "address";
+    };
 
-    cmp_ok $result->count, '>', 0, "we have some attributes";
+    subtest 'shop_attribute' => sub {
 
-    lives_ok { $result = shop_attribute->search( undef, { rows => 1 } )->next }
-    "get a random attribute";
+        my $result;
 
-    isa_ok $result, "Interchange6::Schema::Result::Attribute", "attribute";
+        lives_ok { $result = shop_attribute } "shop_attribute lives";
 
-    lives_ok { $result = shop_attribute( $result->id ) }
-    "shop_attribute find lives";
+        like ref($result), qr/ResultSet/, "returns a ResultSet";
 
-    isa_ok $result, "Interchange6::Schema::Result::Attribute", "attribute";
-};
+        cmp_ok $result->count, '>', 0, "we have some attributes";
 
-subtest 'shop_country' => sub {
+        lives_ok {
+            $result = shop_attribute->search( undef, { rows => 1 } )->next
+        }
+        "get a random attribute";
 
-    my $result;
+        isa_ok $result, "Interchange6::Schema::Result::Attribute", "attribute";
 
-    lives_ok { $result = shop_country } "shop_country lives";
+        lives_ok { $result = shop_attribute( $result->id ) }
+        "shop_attribute find lives";
 
-    like ref($result), qr/ResultSet/, "returns a ResultSet";
+        isa_ok $result, "Interchange6::Schema::Result::Attribute", "attribute";
+    };
 
-    lives_ok { $result = shop_country("MT") } "find country MT";
+    subtest 'shop_country' => sub {
 
-    isa_ok $result, "Interchange6::Schema::Result::Country", "MT";
-};
+        my $result;
 
-subtest 'shop_message' => sub {
+        lives_ok { $result = shop_country } "shop_country lives";
 
-    my $result;
+        like ref($result), qr/ResultSet/, "returns a ResultSet";
 
-    lives_ok { $result = shop_message } "shop_message lives";
+        lives_ok { $result = shop_country("MT") } "find country MT";
 
-    like ref($result), qr/ResultSet/, "returns a ResultSet";
+        isa_ok $result, "Interchange6::Schema::Result::Country", "MT";
+    };
 
-    cmp_ok $result->count, '>', 0, "we have some messages";
+    subtest 'shop_message' => sub {
 
-    lives_ok { $result = shop_message->search( undef, { rows => 1 } )->next }
-    "get a random message";
+        my $result;
 
-    isa_ok $result, "Interchange6::Schema::Result::Message", "message";
+        lives_ok { $result = shop_message } "shop_message lives";
 
-    lives_ok { $result = shop_message( $result->id ) }
-    "shop_message find lives";
+        like ref($result), qr/ResultSet/, "returns a ResultSet";
 
-    isa_ok $result, "Interchange6::Schema::Result::Message", "message";
-};
+        cmp_ok $result->count, '>', 0, "we have some messages";
 
-subtest 'shop_navigation' => sub {
+        lives_ok {
+            $result =
+              shop_message->search( undef, { rows => 1 } )->next
+        }
+        "get a random message";
 
-    my $result;
+        isa_ok $result, "Interchange6::Schema::Result::Message", "message";
 
-    lives_ok { $result = shop_navigation } "shop_navigation lives";
+        lives_ok { $result = shop_message( $result->id ) }
+        "shop_message find lives";
 
-    like ref($result), qr/ResultSet/, "returns a ResultSet";
+        isa_ok $result, "Interchange6::Schema::Result::Message", "message";
+    };
 
-    lives_ok { $result = shop_navigation( { uri => 'hand-tools' } ) }
-    "find navigation hand-tools";
+    subtest 'shop_navigation' => sub {
 
-    isa_ok $result, "Interchange6::Schema::Result::Navigation", "hand-tools";
-};
+        my $result;
 
-subtest 'shop_order' => sub {
+        lives_ok { $result = shop_navigation } "shop_navigation lives";
 
-    my $result;
+        like ref($result), qr/ResultSet/, "returns a ResultSet";
 
-    lives_ok { $result = shop_order } "shop_order lives";
+        lives_ok { $result = shop_navigation( { uri => 'hand-tools' } ) }
+        "find navigation hand-tools";
 
-    like ref($result), qr/ResultSet/, "returns a ResultSet";
+        isa_ok $result, "Interchange6::Schema::Result::Navigation",
+          "hand-tools";
+    };
 
-    cmp_ok $result->count, '>', 0, "we have some orders";
+    subtest 'shop_order' => sub {
 
-    lives_ok { $result = shop_order->search( undef, { rows => 1 } )->next }
-    "get a random order";
+        my $result;
 
-    isa_ok $result, "Interchange6::Schema::Result::Order", "order";
+        lives_ok { $result = shop_order } "shop_order lives";
 
-    lives_ok { $result = shop_order( $result->id ) } "shop_order find lives";
+        like ref($result), qr/ResultSet/, "returns a ResultSet";
 
-    isa_ok $result, "Interchange6::Schema::Result::Order", "order";
-};
+        cmp_ok $result->count, '>', 0, "we have some orders";
 
-subtest 'shop_product' => sub {
+        lives_ok { $result = shop_order->search( undef, { rows => 1 } )->next }
+        "get a random order";
 
-    my $result;
+        isa_ok $result, "Interchange6::Schema::Result::Order", "order";
 
-    lives_ok { $result = shop_product } "shop_product lives";
+        lives_ok { $result = shop_order( $result->id ) }
+        "shop_order find lives";
 
-    like ref($result), qr/ResultSet/, "returns a ResultSet";
+        isa_ok $result, "Interchange6::Schema::Result::Order", "order";
+    };
 
-    lives_ok { $result = shop_product("os28004") } "find product os28004";
+    subtest 'shop_product' => sub {
 
-    isa_ok $result, "Interchange6::Schema::Result::Product", "os28004";
-};
+        my $result;
 
-subtest 'shop_state' => sub {
+        lives_ok { $result = shop_product } "shop_product lives";
 
-    my $state;
+        like ref($result), qr/ResultSet/, "returns a ResultSet";
 
-    lives_ok { shop_state } "shop_state lives";
+        lives_ok { $result = shop_product("os28004") } "find product os28004";
 
-    lives_ok {
-        $state =
-          shop_state( { country_iso_code => 'US', state_iso_code => 'CA' } )
-    }
-    "find state CA in US";
+        isa_ok $result, "Interchange6::Schema::Result::Product", "os28004";
+    };
 
-    isa_ok $state, "Interchange6::Schema::Result::State", "CA/US";
-};
+    subtest 'shop_state' => sub {
 
-subtest 'shop_user' => sub {
+        my $state;
 
-    my $result;
+        lives_ok { shop_state } "shop_state lives";
 
-    lives_ok { $result = shop_user } "shop_user lives";
+        lives_ok {
+            $state =
+              shop_state( { country_iso_code => 'US', state_iso_code => 'CA' } )
+        }
+        "find state CA in US";
 
-    like ref($result), qr/ResultSet/, "returns a ResultSet";
+        isa_ok $state, "Interchange6::Schema::Result::State", "CA/US";
+    };
 
-    lives_ok { $result = shop_user( { username => "customer1" } ) }
-    "find user customer1";
+    subtest 'shop_user' => sub {
 
-    isa_ok $result, "Interchange6::Schema::Result::User", "customer1";
-};
+        my $result;
+
+        lives_ok { $result = shop_user } "shop_user lives";
+
+        like ref($result), qr/ResultSet/, "returns a ResultSet";
+
+        lives_ok { $result = shop_user( { username => "customer1" } ) }
+        "find user customer1";
+
+        isa_ok $result, "Interchange6::Schema::Result::User", "customer1";
+    };
 
 }
 1;

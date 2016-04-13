@@ -62,6 +62,19 @@ get '/current_user' => sub {
     }
 };
 
+post '/shop_charge' => sub {
+    my $params = params;
+    my $charge = shop_charge(%$params);
+    return join( ',',
+        $charge->is_success,
+        $charge->authorization,
+        $charge->order_number,
+        ref( $charge->payment_order ),
+        $charge->payment_order->in_storage,
+        $charge->payment_order->status,
+    );
+};
+
 shop_setup_routes;
 
 # HOOKS

@@ -20,6 +20,7 @@ BEGIN {
 use lib 't/lib';
 use File::Temp;
 use Module::Find;
+use Module::Runtime 'use_module';
 use TestApp;
 use Deploy;
 
@@ -57,8 +58,7 @@ else {
     setmoduledirs(@old_inc);
 }
 foreach my $class (@test_classes) {
-    eval "use $class";
-    $class->run_tests();
+    use_module($class)->run_tests;
 }
 
 done_testing;
