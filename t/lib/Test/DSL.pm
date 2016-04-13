@@ -34,7 +34,7 @@ sub run_tests {
 
     subtest 'shop_cart' => sub {
 
-        $mech->post_ok( '/cart_test', 'shop_cart with no args' ) or diag $mech->content;
+        $mech->post_ok( '/cart_test', 'shop_cart with no args' );
         $mech->content_is( 'Dancer2::Plugin::Interchange6::Cart,main',
             "object type and name are good" );
 
