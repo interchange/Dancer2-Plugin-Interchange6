@@ -337,7 +337,7 @@ sub shop_setup_routes {
                 # At some point in the future D2PAE will be fixed to allow
                 # user objects to be returned.
                 my $user = $plugin->logged_in_user || undef;
-                if ( $user && $user->{username} ) {
+                if ( $user ) {
                     $user = $plugin->shop_user->find(
                         {
                             username => $user->{username}
