@@ -63,8 +63,8 @@ get '/current_user' => sub {
 };
 
 post '/shop_charge' => sub {
-    my $params = params;
-    my $charge = shop_charge(%$params);
+    my %params = params;
+    my $charge = shop_charge(%params);
     return join( ',',
         $charge->is_success,
         $charge->authorization,
@@ -73,6 +73,20 @@ post '/shop_charge' => sub {
         $charge->payment_order->in_storage,
         $charge->payment_order->status,
     );
+};
+
+post '/cart_test' => sub {
+    my $name = body_parameters->get('name');
+    my $cart;
+    if ($name) {
+        shop_cart($name);    # so next call is from stash in Dancer2 var
+        $cart = shop_cart($name);
+    }
+    else {
+        shop_cart;
+        $cart = shop_cart;
+    }
+    return join( ',', ref($cart), $cart->name );
 };
 
 shop_setup_routes;

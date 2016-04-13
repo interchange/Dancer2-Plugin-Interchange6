@@ -33,34 +33,18 @@ sub run_tests {
     };
 
     subtest 'shop_cart' => sub {
-        ok 1;
-        return;
 
-        my $cart;
+        $mech->post_ok( '/cart_test', 'shop_cart with no args' ) or diag $mech->content;
+        $mech->content_is( 'Dancer2::Plugin::Interchange6::Cart,main',
+            "object type and name are good" );
 
-        lives_ok { $cart = shop_cart } "shop_cart lives";
-
-        isa_ok $cart, "Dancer2::Plugin::Interchange6::Cart";
-
-        cmp_ok $cart->name, 'eq', 'main', 'name is main';
-
-        lives_ok { $cart = shop_cart('test') } "shop_cart('test') lives";
-
-        isa_ok $cart, "Dancer2::Plugin::Interchange6::Cart";
-
-        cmp_ok $cart->name, 'eq', 'test', 'name is test';
-
-        lives_ok { $cart = cart } "cart lives";
-
-        isa_ok $cart, "Dancer2::Plugin::Interchange6::Cart";
-
-        cmp_ok $cart->name, 'eq', 'main', 'name is main';
-
-        lives_ok { $cart = cart('test') } "cart('test') lives";
-
-        isa_ok $cart, "Dancer2::Plugin::Interchange6::Cart";
-
-        cmp_ok $cart->name, 'eq', 'test', 'name is test';
+        $mech->post_ok(
+            '/cart_test',
+            { name => 'test' },
+            'shop_cart with name test'
+        );
+        $mech->content_is( 'Dancer2::Plugin::Interchange6::Cart,test',
+            "object type and name are good" );
     };
 
     subtest 'shop_charge' => sub {
