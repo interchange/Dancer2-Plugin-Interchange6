@@ -2,19 +2,18 @@ use strict;
 use warnings;
 
 use Test::More;
-use Class::Load qw/try_load_class/;
 
 BEGIN {
     $ENV{DANCER_ENVIRONMENT} = 'postgresql';
 
-    try_load_class('DateTime::Format::Pg')
-      or plan skip_all => "DateTime::Format::Pg required to run these tests";
+    eval 'use DateTime::Format::Pg';
+    plan skip_all => "DateTime::Format::Pg required to run these tests" if $@;
 
-    try_load_class('DBD::Pg')
-      or plan skip_all => "DBD::Pg required to run these tests";
+    eval 'use DBD::Pg';
+    plan skip_all => "DBD::Pg required to run these tests" if $@;
 
-    try_load_class('Test::PostgreSQL')
-      or plan skip_all => "Test::PostgreSQL required to run these tests";
+    eval 'use Test::PostgreSQL';
+    plan skip_all => "Test::PostgreSQL required to run these tests" if $@;
 }
 
 use lib 't/lib';

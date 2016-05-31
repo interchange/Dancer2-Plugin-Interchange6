@@ -2,19 +2,18 @@ use strict;
 use warnings;
 
 use Test::More;
-use Class::Load qw/try_load_class/;
 
 BEGIN {
     $ENV{DANCER_ENVIRONMENT} = 'mysql';
 
-    try_load_class('DateTime::Format::MySQL')
-      or plan skip_all => "DateTime::Format::MySQL required to run these tests";
+    eval 'use DateTime::Format::MySQL';
+    plan skip_all => "DateTime::Format::MySQL required to run these tests" if $@;
 
-    try_load_class('DBD::mysql')
-      or plan skip_all => "DBD::mysql required to run these tests";
+    eval 'use DBD::mysql';
+    plan skip_all => "DBD::mysql required to run these tests" if $@;
 
-    try_load_class('Test::mysqld')
-      or plan skip_all => "Test::mysqld required to run these tests";
+    eval 'use Test::mysqld';
+    plan skip_all => "Test::mysqld required to run these tests" if $@;
 }
 
 use lib 't/lib';

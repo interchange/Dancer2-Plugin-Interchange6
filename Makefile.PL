@@ -14,10 +14,9 @@ WriteMakefile(
     PL_FILES            => {},
     EXE_FILES           => ['bin/interchange6-expire-sessions'],
     BUILD_REQUIRES      => {
-                            'Class::Load' => 0,
                             'File::Temp' => 0,
                             'Module::Find' => 0,
-                            'Test::More' => 0,
+                            'Test::More' => '0.94', # subtest
                             'Test::Deep' => 0,
                             'Test::Exception' => 0,
                             'Test::WWW::Mechanize::PSGI' => '0.35',
