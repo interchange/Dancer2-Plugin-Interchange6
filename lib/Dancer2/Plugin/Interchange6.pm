@@ -17,18 +17,26 @@ Version 0.120
 
 =cut
 
-our $VERSION = '0.120';
+our $VERSION = '0.200';
 
 =head1 REQUIREMENTS
 
 All Interchange6 Dancer2 applications need to use the L<Dancer2::Session::DBIC>
 engine.
 
-The easiest way to configure this is in your main module, just after all
-the C<use> statements:
+The easiest way to configure this is in your C<config.yml> (or whatever other
+configuration file you prefer):
 
-   set session => 'DBIC';
-   set session_options => {schema => schema};
+  plugins
+    DBIC:
+      default:
+        schema_class: Interchange6::Schema
+        # ... other DBIC plugin config here
+  engines:
+    session:
+      DBIC:
+        db_connection_name: default # connection name from DBIC plugin
+  session: DBIC
 
 =head1 CONFIGURATION
 
@@ -76,7 +84,7 @@ of your main module:
 
     package MyShop;
 
-    use Dancer2 ':syntax';
+    use Dancer2;
     use Dancer2::Plugin::Interchange6;
     use Dancer2::Plugin::Interchange6::Routes;
 
@@ -515,7 +523,7 @@ sub _shop_resultset {
 The L<Dancer2> developers and community for their great application framework
 and for their quick and competent support.
 
-Peter Mottram for his patches.
+Peter Mottram for his patches and conversion of this plugin to Dancer2.
 
 =head1 LICENSE AND COPYRIGHT
 
