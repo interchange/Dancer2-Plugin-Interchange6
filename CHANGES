@@ -1,5 +1,25 @@
 Revision history for Dancer2::Plugin::Interchange6
 
+0.200 Tue 31 May 17:39:57 CEST 2016
+
+    ** New Dancer2 port of Dancer::Plugin::Interchange6 **
+
+    NOTE: all earlier change log entries refer to the Dancer1 plugin
+
+    [ENHANCEMENTS]
+
+    * Conversion to Dancer2 (Peter Mottram).
+    * Switch from Class::Load to Module::Runtime (small speed improvement).
+
+    [TESTS]
+
+    * 100% code coverage reached.
+    * Stop using Test::Roo. Instead we use Module::Find to find test classes
+      and switch back to Test::More and Test::WWW::Mechanize::PSGI.
+    * Test classes can be run individually using environment variable
+      TEST_CLASS_ONLY set to a comma-separated list of classes.
+    
+
 0.120 Wed May 25 12:42:30 2016 CEST
 
     [ENHANCEMENTS]
