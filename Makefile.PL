@@ -22,6 +22,7 @@ WriteMakefile(
                             'Test::WWW::Mechanize::PSGI' => '0.35',
                       },
     PREREQ_PM => {
+                  'JSON::MaybeXS' => '1.003003',
                   'YAML'       => 0,
                   'Interchange6::Schema'     => '0.110',
                   'Interchange6' => '0.120',
