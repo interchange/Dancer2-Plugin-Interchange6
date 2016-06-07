@@ -17,6 +17,7 @@ BEGIN {
 }
 
 use lib 't/lib';
+use DBI;
 use File::Temp;
 use Module::Find;
 use Module::Runtime 'use_module';
@@ -37,6 +38,10 @@ my $pgsql = Test::PostgreSQL->new( base_dir => $tempdir, )
 use warnings 'once';
 
 my $dsn = $pgsql->dsn( dbname => 'test' );
+
+diag "DBD::Pg $DBD::Pg::VERSION Test::PostgreSQL $Test::PostgreSQL::VERSION";
+my $dbh = DBI->connect($dsn);
+diag @{ $dbh->selectrow_arrayref(q| SELECT version() |) }[0];
 
 Deploy::deploy($dsn);
 
