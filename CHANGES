@@ -1,5 +1,11 @@
 Revision history for Dancer2::Plugin::Interchange6
 
+0.201 Tue  7 Jun 15:00:22 CEST 2016
+
+    [TESTS]
+
+    * add dbug to Pg tests to help chase gh issue #1
+
 0.200 Tue 31 May 17:39:57 CEST 2016
 
     ** New Dancer2 port of Dancer::Plugin::Interchange6 **

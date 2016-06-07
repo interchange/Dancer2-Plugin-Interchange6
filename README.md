@@ -4,7 +4,7 @@ Dancer2::Plugin::Interchange6 - Interchange6 Shop Plugin for Dancer2
 
 # VERSION
 
-Version 0.120
+Version 0.201
 
 # REQUIREMENTS
 
