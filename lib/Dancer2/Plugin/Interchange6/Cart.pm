@@ -16,6 +16,7 @@ use strict;
 use warnings;
 
 use Interchange6::Types -types;
+use JSON::MaybeXS ();
 use MooseX::CoverableModifiers;
 use Module::Runtime 'use_module';
 
@@ -185,6 +186,8 @@ sub BUILD {
     my $rset = $self->dbic_cart_products->order_by( 'cart_position',
         'cart_products_id' );
 
+    my $json = JSON::MaybeXS->new;
+
     while ( my $record = $rset->next ) {
 
         push @products,
@@ -198,6 +201,8 @@ sub BUILD {
             price         => $record->product->price,
             uri           => $record->product->uri,
             weight        => $record->product->weight,
+            combine       => $record->combine,
+            $record->extra ? ( extra => $json->decode( $record->extra ) ) : (),
           };
     }
 
@@ -263,7 +268,20 @@ around 'add' => sub {
             uri           => $result->uri,
             weight        => $result->weight,
             quantity      => defined $arg->{quantity} ? $arg->{quantity} : 1,
+            defined $arg->{extra} ? ( extra => $arg->{extra} ) : (),
         };
+
+        if ( defined $arg->{combine} ) {
+            $product->{combine} = $arg->{combine};
+        }
+        elsif ( $result->can('combine') ) {
+            # the db product has combine attribute (not guaranteed if schema
+            # is not IC6S)
+            $product->{combine} = $result->combine;
+        }
+        else {
+            $product->{combine} = 1;
+        }
 
         push @products, $product;
     }
@@ -272,16 +290,21 @@ around 'add' => sub {
 
     # add products to cart
 
+    my $json = JSON::MaybeXS->new( pretty => 0, convert_blessed => 1 );
+
     foreach my $product ( @products ) {
 
         # bubble up the add
         my $ret = $orig->( $self, $product );
 
-        # update or create in db
-
-        my $cart_product =
-          $self->dbic_cart_products->search( { 'me.sku' => $ret->sku },
-            { rows => 1 } )->single;
+        # update or create in db taking notice of 'should_combine_by_sku'
+ 
+        my $cart_product;
+        if ( $ret->should_combine_by_sku ) {
+            $cart_product = $self->dbic_cart_products->search(
+                { 'me.sku' => $ret->sku, 'me.combine' => 1 },
+                { rows     => 1 } )->single;
+        }
 
         if ( $cart_product ) {
             $cart_product->update({ quantity => $ret->quantity });
@@ -292,6 +315,8 @@ around 'add' => sub {
                     sku           => $ret->sku,
                     quantity      => $ret->quantity,
                     cart_position => 0,
+                    combine       => $ret->should_combine_by_sku,
+                    extra         => $json->encode( $ret->extra ),
                 }
             );
         }
@@ -347,50 +372,28 @@ sub load_saved_products {
             'me.sessions_id' => [ undef, { '!=', $self->sessions_id } ],
         },
         {
-            prefetch => { cart_products => 'product' },
+            prefetch => 'cart_products',
         }
     );
+
+    my $json = JSON::MaybeXS->new;
 
     while ( my $cart = $old_carts->next ) {
 
         my $cart_products = $cart->cart_products;
         while ( my $cart_product = $cart_products->next ) {
 
-            # look for this sku in our current cart
+            $self->add(
+                {
+                    sku      => $cart_product->sku,
+                    quantity => $cart_product->quantity,
+                    combine  => $cart_product->combine,
+                    $cart_product->extra
+                    ? ( extra => $json->decode($cart_product->extra) )
+                    : (),
+                }
+            );
 
-            my $product = $self->dbic_cart_products->single(
-                { 'me.sku' => $cart_product->sku } );
-
-            if ( $product ) {
-
-                # we have this sku in our new cart so update quantity
-                my $quantity = $product->quantity + $cart_product->quantity;
-
-                # update in DB
-                $product->update( { quantity => $quantity } );
-
-                # update Interchange6::Cart::Product object
-                $self->find( $cart_product->sku )->set_quantity($quantity);
-            }
-            else {
-
-                # move product into new cart
-                $cart_product->update( { carts_id => $self->id } );
-
-                # add to Interchange6::Cart
-                push @{ $self->products },
-                  use_module( $self->product_class )->new(
-                    dbic_product  => $cart_product->product,
-                    id            => $cart_product->id,
-                    sku           => $cart_product->sku,
-                    canonical_sku => $cart_product->product->canonical_sku,
-                    name          => $cart_product->product->name,
-                    quantity      => $cart_product->quantity,
-                    price         => $cart_product->product->price,
-                    uri           => $cart_product->product->uri,
-                    weight        => $cart_product->product->weight,
-                  );
-              }
         }
     }
 

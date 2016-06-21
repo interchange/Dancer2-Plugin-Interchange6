@@ -3,6 +3,7 @@ package Test::Cart;
 use Test::More;
 use Test::Deep;
 use Test::Exception;
+use Test::WWW::Mechanize::PSGI;
 
 use Dancer2 appname => 'TestApp';
 use Dancer2::Plugin::Interchange6;
@@ -11,6 +12,8 @@ use Dancer2::Plugin::Interchange6::Cart;
 my $app = dancer_app;
 my $trap = $app->logger_engine->trapper;
 my $plugin = $app->with_plugin('Dancer2::Plugin::Interchange6');
+
+my $mech = Test::WWW::Mechanize::PSGI->new( app => TestApp->to_app );
 
 sub run_tests {
     diag "Test::Cart";
@@ -192,6 +195,166 @@ sub run_tests {
 
         # cleanup
         $schema->resultset('Cart')->delete;
+    };
+
+    subtest 'cart combine' => sub {
+        my ( $cart, $db_cart );
+        my $schema = shop_schema;
+
+        # clean slate
+        $mech->get_ok('/clear_cart', "GET /clear_cart is OK");
+        $trap->read;
+
+        # start testing
+
+        $mech->get_ok( '/cart', "GET /cart OK" ) or diag explain $trap->read;
+
+        $mech->content_like( qr/cart=""/, "No products in the cart" );
+
+        lives_ok {
+            $schema->resultset('Product')->find('os28005')
+              ->update( { combine => 0 } )
+        }
+        "set combine => 0 for product os28005";
+
+        $mech->post_ok(
+            '/cart',
+            { sku => 'os28005' },
+            "POST /cart add os28005 OK"
+        );
+
+        $mech->content_like( qr/cart=".+Brush:1:/, "Cart contents look good" );
+
+        $mech->post_ok(
+            '/cart',
+            { sku => 'os28005' },
+            "POST /cart add os28005 OK (2nd time)"
+        );
+
+        $mech->content_like(
+            qr/cart=".+Brush:1:.+Brush:1:/,
+            "We see os28005 twice in the cart"
+        );
+
+        lives_ok {
+            $schema->resultset('Product')->find('os28005')
+              ->update( { combine => 1 } )
+        }
+        "set combine => 1 for product os28005";
+
+        $mech->post_ok(
+            '/cart',
+            { sku => 'os28005' },
+            "POST /cart add os28005 OK (3rd time)"
+        );
+
+        $mech->content_like(
+            qr/cart=".+Brush:1:.+Brush:1:.+Brush:1:/,
+            "We see os28005 three times in the cart"
+        );
+
+        $mech->post_ok(
+            '/cart',
+            { sku => 'os28005' },
+            "POST /cart add os28005 OK (4th time)"
+        );
+
+        $mech->content_like(
+            qr/cart=".+Brush:1:.+Brush:1:.+Brush:2:/,
+            "We see os28005 three times in the cart with qty 2 of last one"
+        );
+
+        cmp_ok $schema->resultset('CartProduct')->count, '==', 3,
+          '3 rows in CartProduct';
+
+        # load_saved_products
+
+        my $user =
+          $schema->resultset('User')->find( { username => 'customer1' } )
+          or fail("No user found in db");
+
+        lives_ok {
+            $schema->resultset('Cart')->update(
+                { users_id => $user->id, sessions_id => undef } )
+        }
+        "set db cart to look like it is from a previous login";
+
+        cmp_ok $schema->resultset('Cart')->count, '==', 1, "1 cart in the db";
+
+        $mech->get_ok( '/cart', "GET /cart OK" );
+
+        cmp_ok $schema->resultset('Cart')->count, '==', 2, "2 carts in the db";
+
+        $mech->content_like( qr/cart=""/, "No products in the cart" );
+
+        lives_ok {
+            $schema->resultset('Product')->find('os28005')
+              ->update( { combine => 0 } )
+        }
+        "set combine => 0 for product os28005";
+
+        $mech->post_ok(
+            '/cart',
+            { sku => 'os28005' },
+            "POST /cart add os28005 OK"
+        );
+
+        $mech->content_like( qr/cart=".+Brush:1:/, "Cart contents look good" );
+
+        lives_ok {
+            $schema->resultset('Product')->find('os28005')
+              ->update( { combine => 1 } )
+        }
+        "set combine => 1 for product os28005";
+
+        $mech->post_ok(
+            '/cart',
+            { sku => 'os28005' },
+            "POST /cart add os28005 OK (2nd time)"
+        );
+
+        $mech->content_like(
+            qr/cart=".+Brush:1:.+Brush:1:/,
+            "We see os28005 twice in the cart"
+        );
+
+        $mech->get_ok( '/current_user', 'GET /current_user OK' );
+
+        $mech->content_is( 'undef', "content is 'undef' (user not logged in)" );
+
+        $trap->read;
+        $mech->post_ok(
+            '/login',
+            {
+                username => 'customer1',
+                password => 'c1passwd'
+            },
+            "POST /login with good password"
+        );
+        $mech->base_is( 'http://localhost/', "Redirected to /" )
+          or diag explain $trap->read;
+
+        $mech->get_ok( '/current_user', 'GET /current_user OK' );
+
+        $mech->content_like( qr/Customer One/,
+            "content is good (Customer One is logged in)" );
+
+        $mech->get_ok( '/cart', "GET /cart OK" );
+
+        $mech->content_like(
+            qr/cart=".+Brush:.+Brush:.+Brush:.+Brush:/,
+            "We see os28005 four times in the cart"
+        );
+
+        $mech->content_like(
+            qr/total="53.94".+cart=".+Brush:3:/s,
+            "One trim brush has quantity 3 (combinable ones) and total is good"
+        );
+
+        # cleanup
+
+        lives_ok { $schema->resultset('Cart')->delete_all }
+        "delete all carts from database";
     };
 }
 
