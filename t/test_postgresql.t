@@ -9,8 +9,8 @@ BEGIN {
     eval 'use DateTime::Format::Pg';
     plan skip_all => "DateTime::Format::Pg required to run these tests" if $@;
 
-    eval 'use DBD::Pg';
-    plan skip_all => "DBD::Pg required to run these tests" if $@;
+    eval 'use DBD::Pg 3.0.0';
+    plan skip_all => "DBD::Pg >= 3.0.0 required to run these tests" if $@;
 
     eval 'use Test::PostgreSQL';
     plan skip_all => "Test::PostgreSQL required to run these tests" if $@;
@@ -33,7 +33,7 @@ my $tempdir = File::Temp::tempdir(
 );
 
 no warnings 'once';    # prevent: "Test::PostgreSQL::errstr" used only once
-my $pgsql = Test::PostgreSQL->new( base_dir => $tempdir, )
+my $pgsql = Test::PostgreSQL->new( base_dir => $tempdir, extra_initdb_args => '--no-locale --nosync')
   or plan skip_all => "Test::PostgreSQL died: " . $Test::PostgreSQL::errstr;
 use warnings 'once';
 
