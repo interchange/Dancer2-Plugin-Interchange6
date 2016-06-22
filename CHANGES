@@ -1,5 +1,16 @@
 Revision history for Dancer2::Plugin::Interchange6
 
+0.202 Wed 22 Jun 15:10:19 CEST 2016
+
+    [ENHANCEMENTS]
+
+    * add basic support for Product combine and extra (Peter Mottram)
+
+    [TESTS]
+
+    * add tests for Product's combine attribute (Peter Mottram)
+    * more work to try and address DH issue #1 (Peter Mottram)
+
 0.201 Tue  7 Jun 15:00:22 CEST 2016
 
     [TESTS]
