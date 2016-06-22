@@ -6,6 +6,8 @@ Dancer2::Plugin::Interchange6::API - api routes for Interchange6
 
 =cut
 
+use warnings;
+use strict;
 use Dancer2::Core::Types qw/Dancer2Prefix Str/;
 use Dancer2::Plugin;
 
