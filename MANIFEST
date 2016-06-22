@@ -1,6 +1,7 @@
 bin/interchange6-expire-sessions
 CHANGES
 lib/Dancer2/Plugin/Interchange6.pm
+lib/Dancer2/Plugin/Interchange6/API.pm
 lib/Dancer2/Plugin/Interchange6/Business/OnlinePayment.pm
 lib/Dancer2/Plugin/Interchange6/Cart.pm
 lib/Dancer2/Plugin/Interchange6/Cart/Product.pm
@@ -27,6 +28,7 @@ t/lib/Dancer2/Template/TemplateFlute.pm
 t/lib/Deploy.pm
 t/lib/TestApp.pm
 t/lib/TestCart.pm
+t/lib/Test/API.pm
 t/lib/Test/Cart.pm
 t/lib/Test/DSL.pm
 t/lib/Test/Hooks.pm
