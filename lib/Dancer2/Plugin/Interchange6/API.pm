@@ -25,8 +25,27 @@ has serializer => (
     from_config => sub { 'JSON' },
 );
 
+# plugins we use
+
+has plugin_interchange6 => (
+    is      => 'ro',
+    lazy    => 1,
+    default => sub {
+        $_[0]->app->with_plugin('Dancer2::Plugin::Interchange6');
+    },
+    handles => [
+        'shop_address',    'shop_attribute',
+        'shop_cart',       'shop_charge',
+        'shop_country',    'shop_message',
+        'shop_navigation', 'shop_order',
+        'shop_product',    'shop_redirect',
+        'shop_schema',     'shop_state',
+        'shop_user',
+    ],
+);
+
 my $cart_sub = sub {
-    my $app = shift;
+    my $app    = shift;
     my $plugin = $app->with_plugin(__PACKAGE__);
 
     # do some stuff
@@ -35,7 +54,7 @@ my $cart_sub = sub {
 };
 
 my $navigation_sub = sub {
-    my $app = shift;
+    my $app    = shift;
     my $plugin = $app->with_plugin(__PACKAGE__);
 
     # do some stuff
@@ -44,15 +63,19 @@ my $navigation_sub = sub {
 };
 
 my $product_sub = sub {
-    my $app = shift;
+    my $app    = shift;
     my $plugin = $app->with_plugin(__PACKAGE__);
-    my $sku = $app->request->route_parameters->get('sku');
+    my $sku    = $app->request->route_parameters->get('sku');
 
-    # do some stuff
+    my $product =
+      $plugin->shop_product->with_lowest_selling_price->with_quantity_in_stock
+      ->with_variant_count->with_average_rating->hri->find( { sku => $sku } );
+
+    $app->send_error( "Not Found", 404 ) unless $product;
 
     my $data = { sku => $sku };
 
-    $app->send_as( $plugin->serializer, $data );
+    $app->send_as( $plugin->serializer, $product );
 };
 
 sub BUILD {
@@ -63,6 +86,14 @@ sub BUILD {
         regexp => $plugin->prefix . '/cart',
         code   => $cart_sub,
     );
+
+    foreach my $method (qw/get post/) {
+        $plugin->app->add_route(
+            method => $method,
+            regexp => $plugin->prefix . '/cart/add/:sku',
+            code   => $cart_sub,
+        );
+    }
 
     $plugin->app->add_route(
         method => 'get',
