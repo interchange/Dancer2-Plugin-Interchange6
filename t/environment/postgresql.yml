@@ -3,8 +3,6 @@ plugins:
     default:
       options:
         on_connect_do: 'SET client_min_messages=WARNING;'
-        pg_enable_utf8: -1
-        client_encoding: UTF8
         quote_names: 1
 session: DBIC
 engines:
