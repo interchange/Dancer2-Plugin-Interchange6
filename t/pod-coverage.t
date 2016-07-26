@@ -23,7 +23,8 @@ plan skip_all => "Pod::Coverage $min_pc required for testing POD coverage"
 all_pod_coverage_ok(
     {
         also_private => [
-            qw/BUILDARGS
+            qw/BUILD
+              BUILDARGS
               set_quantity
               ClassHooks
               PluginKeyword
