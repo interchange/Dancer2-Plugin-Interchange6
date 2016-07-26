@@ -39,6 +39,7 @@ WriteMakefile(
                   # versions before 0.11 have a habit of failing to install
                   # so add this dep to make installing DPIC6 more reliable
                   'Net::HTTPS::Any' => '0.11', # 
+                  'Scalar::Util' => 0, # weaken
     },
     dist                => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
     clean               => { FILES => 'Dancer2-Plugin-Interchange6-*' },
