@@ -328,28 +328,6 @@ sub shop_setup_routes {
 
     my $sub;
 
-    $app->add_hook(
-        Dancer2::Core::Hook->new(
-            name => 'before',
-            code => sub {
-
-                # D2PAE::Provider::DBIC returns logged_in_user as hashref
-                # instead of a proper user result so we have to mess about.
-                # At some point in the future D2PAE will be fixed to allow
-                # user objects to be returned.
-                my $user = $plugin->logged_in_user || undef;
-                if ( $user ) {
-                    $user = $plugin->shop_user->find(
-                        {
-                            username => $user->{username}
-                        }
-                    );
-                }
-                $plugin->shop_schema->set_current_user($user);
-            },
-        )
-    );
-
     # display warnings
     $plugin->_config_warnings;
 

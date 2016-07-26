@@ -6,6 +6,7 @@ use warnings;
 use Dancer2::Plugin;
 use Dancer2::Plugin::Interchange6::Business::OnlinePayment;
 use Module::Runtime 'use_module';
+use Scalar::Util 'weaken';
 
 =head1 NAME
 
@@ -344,6 +345,31 @@ plugin_keywords 'shop_address',
   'shop_schema',
   'shop_state',
   'shop_user';
+
+sub BUILD {
+    my $plugin = shift;
+    weaken ( my $weak_plugin = $plugin );
+    $plugin->app->add_hook(
+        Dancer2::Core::Hook->new(
+            name => 'before',
+            code => sub {
+                # D2PAE::Provider::DBIC returns logged_in_user as hashref
+                # instead of a proper user result so we have to mess about.
+                # At some point in the future D2PAE will be fixed to allow
+                # user objects to be returned.
+                my $user = $weak_plugin->logged_in_user || undef;
+                if ( $user ) {
+                    $user = $weak_plugin->shop_user->find(
+                        {
+                            username => $user->{username}
+                        }
+                    );
+                }
+                $weak_plugin->shop_schema->set_current_user($user);
+            },
+        )
+    );
+}
 
 sub shop_address {
     shift->_shop_resultset( 'Address', @_ );
