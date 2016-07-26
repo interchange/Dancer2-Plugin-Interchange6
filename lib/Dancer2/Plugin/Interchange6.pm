@@ -353,19 +353,48 @@ sub BUILD {
         Dancer2::Core::Hook->new(
             name => 'before',
             code => sub {
+                my $app = shift;
+                my $schema = $weak_plugin->shop_schema;
+
                 # D2PAE::Provider::DBIC returns logged_in_user as hashref
                 # instead of a proper user result so we have to mess about.
                 # At some point in the future D2PAE will be fixed to allow
                 # user objects to be returned.
+
                 my $user = $weak_plugin->logged_in_user || undef;
                 if ( $user ) {
-                    $user = $weak_plugin->shop_user->find(
+                    $user = $schema->resultset('User')->find(
                         {
                             username => $user->{username}
                         }
                     );
                 }
-                $weak_plugin->shop_schema->set_current_user($user);
+                $schema->set_current_user($user);
+
+                # Attempt to determine the correct Website and stash it
+                # in the schema.
+
+                my $website;
+                my $host = $app->request->base->host;
+                if ( $host ) {
+                    $website = $schema->resultset('Website')
+                      ->find( { hostname => $host } );
+                }
+
+                # look for the default website (hostname == '') if we didn't 
+                # already find the website
+                $website =
+                  $schema->resultset('Website')->find( { hostname => '' } )
+                  unless $website;
+
+                if ( $website ) {
+                    $app->log( debug => "Setting current_website to name: "
+                          . $website->name );
+                    $schema->set_current_website($website);
+                }
+                else {
+                    $app->log( warning => "Website not found for host: $host" );
+                }
             },
         )
     );
