@@ -1,5 +1,21 @@
 Revision history for Dancer2::Plugin::Interchange6
 
+0.203 Wed  3 Aug 17:25:41 CEST 2016
+
+    [ENHANCEMENTS]
+
+    * Main plugin needs access to the Schema's current_user so move stashing
+      of user in Schema from Routes to main plugin class.
+
+    [BUG FIXES]
+
+    * Add dep on Scalar::Utils for weaken method.
+
+    [TESTS]
+
+    * Remove pg_enable_utf8 from Pg tests - closes issue #1.
+    * Omit BUILD from pod-coverage.
+
 0.202 Wed 22 Jun 15:10:19 CEST 2016
 
     [ENHANCEMENTS]
